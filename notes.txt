@@ -1,0 +1,3 @@
+Implemented get request route in app.js.
+imported data from local system.
+and send that data to user when he requested with get method.
