@@ -1,3 +1,36 @@
-added delete route.
-we did not deleted anything in our dummy database.
-we just implemented the delete route to our app.
+Refactoring Routes:
+Move Route Handlers to Functions:
+
+Instead of defining route handlers directly in the route methods, the handlers have been moved to separate functions for better code organization. For example:
+getAllTours
+getTour
+createTour
+updateTour
+deleteTour
+Previous Approach:
+
+Initially, routes were defined separately:
+----------------------code----------------
+// app.get('/api/v1/tours', getAllTours);
+// app.get('/api/v1/tours/:id', getTour);
+// app.post('/api/v1/tours', createTour);
+// app.patch('/api/v1/tours/:id', updateTour);
+// app.delete('/api/v1/tours/:id', deleteTour);
+------------------------------------------------
+
+Chaining Routes:
+Since the routes share similar paths (/api/v1/tours and /api/v1/tours/:id), they can be chained using app.route, making the code more concise:
+----------------------code---------------
+app
+  .route('/api/v1/tours')
+  .get(getAllTours)
+  .post(createTour);
+
+app
+  .route('/api/v1/tours/:id')
+  .get(getTour)
+  .patch(updateTour)
+  .delete(deleteTour);
+
+  ---------------------------------------------
+  
