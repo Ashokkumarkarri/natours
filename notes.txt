@@ -1,36 +1,21 @@
-Refactoring Routes:
-Move Route Handlers to Functions:
+understaind how middelwear works.
 
-Instead of defining route handlers directly in the route methods, the handlers have been moved to separate functions for better code organization. For example:
-getAllTours
-getTour
-createTour
-updateTour
-deleteTour
-Previous Approach:
+---------------------
+app.use((req, res, next) => {
+  console.log('Hello from the middleware');
+  next();
+});
 
-Initially, routes were defined separately:
-----------------------code----------------
-// app.get('/api/v1/tours', getAllTours);
-// app.get('/api/v1/tours/:id', getTour);
-// app.post('/api/v1/tours', createTour);
-// app.patch('/api/v1/tours/:id', updateTour);
-// app.delete('/api/v1/tours/:id', deleteTour);
-------------------------------------------------
+app.use((req, res, next) => {
+  req.requestTime = new Date().toISOString();
+  next();
+});
+----------------------
 
-Chaining Routes:
-Since the routes share similar paths (/api/v1/tours and /api/v1/tours/:id), they can be chained using app.route, making the code more concise:
-----------------------code---------------
-app
-  .route('/api/v1/tours')
-  .get(getAllTours)
-  .post(createTour);
+Middleware in Node.js are functions that process requests before they reach your routes. They can modify the request (req) or response (res), or execute code like logging. Middleware functions use next() to move to the next function in the stack.
 
-app
-  .route('/api/v1/tours/:id')
-  .get(getTour)
-  .patch(updateTour)
-  .delete(deleteTour);
+For example:
 
-  ---------------------------------------------
-  
+The first middleware logs a message for every request.
+The second middleware adds a timestamp to the request.
+This helps in handling tasks like logging, authentication, and modifying data consistently across your application.
