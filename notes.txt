@@ -1,21 +1,21 @@
-understaind how middelwear works.
+npm i moragan 
+this is a login middleware.
 
----------------------
-app.use((req, res, next) => {
-  console.log('Hello from the middleware');
-  next();
-});
+const morgan = require('morgan');
+app.use(morgan('dev'));
 
-app.use((req, res, next) => {
-  req.requestTime = new Date().toISOString();
-  next();
-});
-----------------------
+using this middleware we can capture the routes requests
+---------------------------------------------------------
 
-Middleware in Node.js are functions that process requests before they reach your routes. They can modify the request (req) or response (res), or execute code like logging. Middleware functions use next() to move to the next function in the stack.
+morgan is a Node.js middleware used for logging HTTP requests.
+Why use morgan?: It helps track incoming requests, making debugging easier by providing details like request methods, URLs, status codes, and response times.
 
-For example:
+How to use morgan?
 
-The first middleware logs a message for every request.
-The second middleware adds a timestamp to the request.
-This helps in handling tasks like logging, authentication, and modifying data consistently across your application.
+Install it using npm i morgan.
+Import and apply it in your app:
+
+const morgan = require('morgan');
+app.use(morgan('dev')); // The 'dev' format logs concise colored outputs
+This will automatically log all incoming requests in the specified format.
+morgan simplifies the process of monitoring and debugging requests in your Node.js applications.
