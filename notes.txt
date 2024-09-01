@@ -1,21 +1,64 @@
-now we create a new folder: routes.
-In that folder we create tourRoute.js, userRoute.js
+now we create a new folder: controller.
+in that folder will cut and paste the code related to route handelers.
 
-we will cut and paste the code from app.js and paste in respective route folder's files.
-------------------------------------------------------------------
-tourRoutes.js:
-here we had moved all the realted tourRoutes from app.js
-also moved "tours" varable which get data from api using fs modules.
+In future in our project we will create controller and we will use this code.
+thats why we are calling the route handelers a controllers.
 
-since we had changed the code to different file, we also need to change the fs file path.
-${__dirname}/..
-.. will take us to the root folder.
+----------------------
+tourControllers.js: 
+in this file we had pasted all the code from tourRoutes.js;
+all routehandelers are moved here.
 
-Imported modules: fs,express
-exported: module.exports = router;
+now we need to export the functions from this file.
+since there are bunch of function need to be exported we will use:
+we goona add exports. inthe place of const to the varible to be exported.
+example:
+exports.deleteTour = (req, res) => {
+  if (req.params.id * 1 > tours.length) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'Invalid ID',
+    });
+  }
+  res.status(204).json({
+    status: 'Success',
+    data: null,
+  });
+};
+------------------------------
+tourRoute:
+we had imported the files from tourControllers
 
-NOTE: since we are only exporting one file we had used: odule.exports
-------------------------------------------------------------
-userRoutes.js: simileraly some code also moved to users
+old code:
 
---------------------------------------------------------------
+const express = require('express');
+const router = express.Router();
+router.route('/').get(getAllTours).post(createTour);
+
+router.route('/:id').get(getTour).patch(updateTour).delete(deleteTour);
+module.exports = router;
+
+new code:
+since we hade imported the functions from tourControllers, all the methods which are there in that file. we can accesss in this file too.
+
+const express = require('express');
+const tourController = require('./../controllers/tourController');
+
+const router = express.Router();
+router
+  .route('/')
+  .get(tourController.getAllTours)
+  .post(tourController.createTour);
+
+router
+  .route('/:id')
+  .get(tourController.getTour)
+  .patch(tourController.updateTour)
+  .delete(tourController.deleteTour);
+
+module.exports = router;
+
+---------------------
+userRoute:
+similarly also changed userRoute file
+----------------------
