@@ -1,1 +1,21 @@
-created user route just like tours route.
+now we create a new folder: routes.
+In that folder we create tourRoute.js, userRoute.js
+
+we will cut and paste the code from app.js and paste in respective route folder's files.
+------------------------------------------------------------------
+tourRoutes.js:
+here we had moved all the realted tourRoutes from app.js
+also moved "tours" varable which get data from api using fs modules.
+
+since we had changed the code to different file, we also need to change the fs file path.
+${__dirname}/..
+.. will take us to the root folder.
+
+Imported modules: fs,express
+exported: module.exports = router;
+
+NOTE: since we are only exporting one file we had used: odule.exports
+------------------------------------------------------------
+userRoutes.js: simileraly some code also moved to users
+
+--------------------------------------------------------------
