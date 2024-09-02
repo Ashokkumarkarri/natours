@@ -1,27 +1,21 @@
-created new server.js file
-why: it's good practise that we keep all the express files in one file and server related files in another file.
-
-const port = 3000;
-app.listen(port, () => {
-  console.log(`App runing on ${port}....`);
+here we had implemented params middleware.
+router.param('id', (req, res, next, val) => {
+  console.log(`Tour id is;${val}`);
+  next();
 });
 
 
-we need to export the app from app.js
-
-later on we will have other stuff which is not realted to express but still realted to our application, stuff like: DB configuration or some error handeling stuff or ENV varibles all of the stuff will live in this server.js file.
-
-from now we need to do nodemon server.js
-or we can create a "npm script" which will work by hitting "npm start"
-
--------------------------
-npm script:
-
-in package.json
-  "scripts": {
-    "start": "nodemon server.js"
+---------------------------------------
+and I had also replaced the code tourRoutes:
+  if (req.params.id * 1 > tours.length) {
+    return res.status(404).json({
+      status: 'fail',
+      message: 'Invalid ID',
+    });
   }
+  --------------------------------------
 
-  now we need not to remeber how to run srver like is it app.js or index.js.
-  when we hit npm start : the server will start.
-  -------------------------
+
+  in expresss we best work with middleware pipelane.
+
+  
