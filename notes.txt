@@ -1,56 +1,41 @@
-everthing that is not related to express we wrtie it in outisde of the  app.js
+To set up ESLint and Prettier to highlight errors and ensure code quality, follow these steps:
 
-app.js we use only to configure the express.
-
-
-the enviroment varibles are part of node js.
-so goona write in server.js 
-----------------------------------------
-to check in which env we are in :
-console.log(app.get('env'));
-
-this env sets by express but the node js itself sets a lot of env.
+1. Install the ESLint extension in VS Code:.
+2. Install necessary dev dependencies:
+Run the following command to install ESLint, Prettier, and related packages:
+npm i eslint prettier eslint-config-prettier eslint-plugin-prettier --save-dev
 
 
-console.log(process.env);
+----------
+npm i eslint prettier eslint-config-prettier eslint-plugin-prettier eslint-config-airbnb eslint-plugin-node eslint-plugin-import eslint-plugin-jsx-a11y eslint-plugin-react --save-dev
 
-to set development to develop through termianl for windows:
- $env:NODE_ENV="development"; nodemon server.js
+------------
+after installing we need config file for both eslint and prettier.
+we had created prettier.
 
-we can difine multiple varibles throught terminal : $env:NODE_ENV="development"; nodemon server.js x=10
+-----------
 
-but it's not so pratical, imagine we need to put 15 or more varibles, so we do that in configuration file called : config.env
------
- In the config.envfile 
+create a file called : eslintrc.json
+in that file wrtie these rules 
 
- NODE_ENV="development";
- PORT=3000
- USER=jonas
- PASSWORD:12345
-
----------------
-
-after creating the config.env file we need to read that file to out project.
-for that we have a module called :npm i dotenv
-
-
------------------------------------
-
-Install cross-env:
-npm install cross-env --save-dev
-
-  "scripts": {
-    "start:dev": "nodemon server.js",
-    "start:prod": "cross-env NODE_ENV=production nodemon server.js"
-  },
-
-------------------------
-in app.js
-//implemented the logic for morgan logger will only work when we are in development.
-if (process.env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
+{
+  "extends": ["airbnb", "prettier", "plugin:node/recommended"],
+  "plugins": ["prettier"],
+  "rules": {
+    "prettier/prettier": "error",
+    "spaced-comment": "off",
+    "no-console": "warn",
+    "consistent-return": "off",
+    "func-names": "off",
+    "object-shorthand": "off",
+    "no-process-exit": "off",
+    "no-param-reassign": "off",
+    "no-return-await": "off",
+    "no-underscore-dangle": "off",
+    "class-methods-use-this": "off",
+    "prefer-destructuring": ["error", { "object": true, "array": false }],
+    "no-unused-vars": ["error", { "argsIgnorePattern": "req|res|next|val" }]
+  }
 }
-
---------------
-once we deployed oour project we should change ENV to production.
+------------------
 
