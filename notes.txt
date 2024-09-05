@@ -1,12 +1,56 @@
-if we have some static files in our project directory: that are not being used by routes and if we want to see them with the browser.
-example: we have some images or html code in a public folder in our project directory.
+everthing that is not related to express we wrtie it in outisde of the  app.js
 
-and we want to see them through the browser:
-we can add this middleware 
-app.use(express.static(`${__dirname}/public`));
-we will menction the file path.
-Now if we visit http://127.0.0.3:3000/overview.html, our homepage will appear.
-our public folder will act as root folder here.
+app.js we use only to configure the express.
 
-so we should directly write: http://localhost:3000/overview.html
-we should not write like this: http://localhost:3000/public/overview.html
+
+the enviroment varibles are part of node js.
+so goona write in server.js 
+----------------------------------------
+to check in which env we are in :
+console.log(app.get('env'));
+
+this env sets by express but the node js itself sets a lot of env.
+
+
+console.log(process.env);
+
+to set development to develop through termianl for windows:
+ $env:NODE_ENV="development"; nodemon server.js
+
+we can difine multiple varibles throught terminal : $env:NODE_ENV="development"; nodemon server.js x=10
+
+but it's not so pratical, imagine we need to put 15 or more varibles, so we do that in configuration file called : config.env
+-----
+ In the config.envfile 
+
+ NODE_ENV="development";
+ PORT=3000
+ USER=jonas
+ PASSWORD:12345
+
+---------------
+
+after creating the config.env file we need to read that file to out project.
+for that we have a module called :npm i dotenv
+
+
+-----------------------------------
+
+Install cross-env:
+npm install cross-env --save-dev
+
+  "scripts": {
+    "start:dev": "nodemon server.js",
+    "start:prod": "cross-env NODE_ENV=production nodemon server.js"
+  },
+
+------------------------
+in app.js
+//implemented the logic for morgan logger will only work when we are in development.
+if (process.env.NODE_ENV === 'development') {
+  app.use(morgan('dev'));
+}
+
+--------------
+once we deployed oour project we should change ENV to production.
+
