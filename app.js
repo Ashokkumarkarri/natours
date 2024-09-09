@@ -1,7 +1,6 @@
-const fs = require('fs');
 const express = require('express');
 const morgan = require('morgan');
-const { execArgv } = require('process');
+// const { execArgv } = require('process');
 
 const tourRouter = require('./routes/tourRoutes');
 const userRouter = require('./routes/userRoutes');
