@@ -1,49 +1,41 @@
 
-const tourSchema=new mongoose.Schema()
-we pass schema as an object.
------------------------------------------------------------------------------------------
-basic schema:
-const tourSchema=new mongoose.Schema({
-  name:String,
-  rating:Number,
-  price:Number
-})
-
-advanced schema:
-
-const tourSchema = new mongoose.Schema({
-  name: {
-    type: String, // The "name" field must be a string
-    required: [true, 'A tour must have a name'], // "required" means this field must have a value, and a custom error message is provided if it is missing.
-    unique: true, // Ensures no two tours can have the same name
-  },
-  rating: {
-    type: Number, // The "rating" field is a number
-    default: 4.1, // If no rating is provided, it defaults to 4.1
-  },
-  price: {
-    type: Number, // The "price" field must be a number
-    required: [true, 'A tour must have a price'], // "required" with a custom message if price is missing
-  },
+//----------------code-----------------------------------------
+const testTour = new Tour({
+  name: 'The Forest Hiker',
+  rating: 4.7,
+  price: 497,
 });
+// there are methods to intract with DB >> save()
+//it will retun a promise,
 
-------------------------------------------------------------------------------------------
-model:
+testTour
+  .save()
+  .then((doc) => {
+    console.log(doc);
+  })
+  .catch((err) => {
+    console.log(`Error 🔥: ${err}`);
+  });
 
-const Tour = mongoose.model('Tour', tourSchema);
+//------------------------------Notes--------------------------------------
 
-//name of the model  , schema
-//allways use upper case ofr model names and varible.
-// thats why I had used Captial T for the varible so that we will get to know that we are dealing with mode.
 
----------------------------------------------------------------------------------------
-Notes:
+Saving a Document in Mongoose:
+Creating a Document:
 
-Schema: Defines the structure of your data.
-        Example: The tourSchema defines what fields a "tour" should have (name, rating, price).
+testTour is a new document created using the Tour model.
+It contains the following fields:
+name: 'The Forest Hiker'
+rating: 4.7
+price: 497
+Saving the Document:
 
-Model: A tool to interact with the MongoDB collection.
-        Created using mongoose.model('ModelName', schema).
-        Example: Tour is the model for the "tours" collection.
+We use the .save() method to save testTour to the MongoDB database.
+.save() returns a promise.
+Handling the Promise:
 
-------------------------------------------------------------------------------------------------
+.then(): Runs if the save is successful.
+The saved document is returned as doc.
+Logs the saved document to the console.
+.catch(): Runs if there’s an error during saving.
+Logs the error message using custom format with the 🔥 emoji.

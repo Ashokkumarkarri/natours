@@ -13,8 +13,6 @@ mongoose.connect(DB).then(() => {
   console.log('DB connection successful');
 });
 
-//-------------------------------------------------------------------------------------------------------------
-
 const tourSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -36,7 +34,26 @@ const Tour = mongoose.model('Tour', tourSchema);
 //allways use upper case ofr model names and varible.
 // thats why I had used Captial T for the varible so that we will get to know that we are dealing with mode.
 
-//-------------------------------------------------------------------------------------------------------------
+//------------------------------
+const testTour = new Tour({
+  name: 'The Forest Hiker',
+  rating: 4.7,
+  price: 497,
+});
+// there are methods to intract with DB >> save()
+//it will retun a promise,
+
+testTour
+  .save()
+  .then((doc) => {
+    console.log(doc);
+  })
+  .catch((err) => {
+    console.log(`Error 🔥: ${err}`);
+  });
+
+//--------------------------------
+
 const port = process.env.PORT || 8000;
 app.listen(port, () => {
   console.log(`App runing on ${port}....`);
