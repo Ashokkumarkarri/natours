@@ -1,24 +1,4 @@
-const fs = require('fs');
-
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
-);
-
-exports.checkID = (req, res, next, val) => {
-  console.log(`Tour id is;${val}`);
-  if (req.params.id * 1 > tours.length) {
-    return res.status(404).json({
-      status: 'fail',
-      message: 'Invalid ID',
-    });
-  }
-  next();
-};
-
-//create a checkBody middleware;
-//check if body contains the name and prie property;
-//IF not, send back 404 (bad request);
-//Add it to the post handeler stack;
+const Tour = require('./../models/tourModel');
 
 exports.checkBody = (req, res, next) => {
   if (!req.body.name || !req.body.price) {
@@ -36,9 +16,9 @@ exports.getAllTours = (req, res) => {
     status: 'success',
     result: tours.length,
     requestedAt: req.requestTime,
-    data: {
-      tours: tours,
-    },
+    // data: {
+    //   tours: tours,
+    // },
   });
 };
 
@@ -46,38 +26,23 @@ exports.getTour = (req, res) => {
   // console.log(req.params);
 
   const id = req.params.id * 1; //we are converting the str to int
-  const tour = tours.find((el) => el.id === id); //returns true or false
+  // const tour = tours.find((el) => el.id === id); //returns true or false
 
-  //    (id > tours.length) {
-  // if (!tour) {
-  //   return res.status(404).json({
-  //     status: 'fail',
-  //     message: 'Invalid ID',
-  //   });
-  // }
-  res.status(200).json({
-    status: 'success',
-    result: tours.length,
-    data: {
-      tour: tour,
-    },
-  });
+  // res.status(200).json({
+  //   status: 'success',
+  //   result: tours.length,
+  //   data: {
+  //     tour: tour,
+  //   },
+  // });
 };
 
 exports.createTour = (req, res) => {
-  const newId = tours[tours.length - 1].id + 1; //Last object in array's ID +1
-  const newTour = Object.assign({ id: newId }, req.body); //object.assign will combine two obj together.
-  tours.push(newTour);
-  fs.writeFile(
-    `${__dirname}/dev-data/data/tours-simple.json`,
-    JSON.stringify(tours),
-    (err) => {}
-  );
   res.status(201).json({
     status: 'success',
-    data: {
-      tours: newTour,
-    },
+    // data: {
+    //   tours: newTour,
+    // },
   });
 };
 

@@ -1,41 +1,25 @@
+created models folder >> created tourModel.js
 
-//----------------code-----------------------------------------
-const testTour = new Tour({
-  name: 'The Forest Hiker',
-  rating: 4.7,
-  price: 497,
-});
-// there are methods to intract with DB >> save()
-//it will retun a promise,
+from server.js we had removed the tourSchema code and pasted to tourModel.
 
-testTour
-  .save()
-  .then((doc) => {
-    console.log(doc);
-  })
-  .catch((err) => {
-    console.log(`Error 🔥: ${err}`);
-  });
-
-//------------------------------Notes--------------------------------------
+const tourSchema = new mongoose.Schema({});
+const Tour = mongoose.model('Tour', tourSchema);
 
 
-Saving a Document in Mongoose:
-Creating a Document:
+deleted: testTOur in server.js
+exported the Tour from TOurModel and imported in tourConroller.
 
-testTour is a new document created using the Tour model.
-It contains the following fields:
-name: 'The Forest Hiker'
-rating: 4.7
-price: 497
-Saving the Document:
 
-We use the .save() method to save testTour to the MongoDB database.
-.save() returns a promise.
-Handling the Promise:
+in tour Controller, we had removed this line.
+// const tours = JSON.parse(
+//   fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
+// );
 
-.then(): Runs if the save is successful.
-The saved document is returned as doc.
-Logs the saved document to the console.
-.catch(): Runs if there’s an error during saving.
-Logs the error message using custom format with the 🔥 emoji.
+in tourController.js we had removed the tours which depends on local json dummy databas, since we goona use real mongoDB from now.
+deleted all the code which depends on the localDB.
+
+removed fs module,check ID function.
+
+in tourROutes.js : we had commented this code: // router.param('id', tourController.checkID);
+since its depending on checkID fun which has been removed in tourController.
+
