@@ -1,38 +1,77 @@
------------------getAllTours-------------------------------
-exports.getAllTours = async (req, res) => {
+exports.updateTour = async (req, res) => {
   try {
-    const tours = await Tour.find();
-
-    res.status(200).json({
-      status: 'success',
-      results: tours.length,
-      data: {
-        tours: tours,
-      },
+    const tour = await Tour.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true,
     });
-  } catch (err) {
-    res.status(404).json({
-      status: 'Fail',
-      message: err,
-    });
-  }
-};
---------------getTour-------------------------------
-
-exports.getTour = async (req, res) => {
-  try {
-    const tour = await Tour.findById(req.params.id);
     res.status(200).json({
-      status: 'success',
+      status: 'Success',
       data: {
         tour: tour,
       },
     });
   } catch (err) {
-    res.status(404).json({
-      status: 'Fail',
+    res.status(400).json({
+      status: 'fail',
       message: err,
     });
   }
 };
------------------------------------------------------
+
+-----------------------------------
+
+method breakdown:
+
+Tour.findByIdAndUpdate(req.params.id, req.body, {new: true,runValidators: true,});
+
+
+this methods takes many arg's but i had used 3 argments:
+1. req.params.id >>  it will passes the id from postman.
+2. req.body      >> it will give the new data that need to be updated
+3. Options object:
+                 1.new: true      >> this it return the doc for updating.
+                 2.runValidators: true   >> this method runs all the rules we defined in schema while updating the new document.
+
+
+note: we can mass many args into to the options object. you an check Mongoose documentation.
+https://mongoosejs.com/docs/api/model.html#Model.findOneAndUpdate()
+
+
+
+-------------------------------chat gpt notes---------------------
+Explanation:
+
+Find by ID:
+    req.params.id: Retrieves the document with the ID passed in the URL.
+    Example: If the URL is /api/tours/123, it will look for the document with ID 123.
+
+Update Document:
+    req.body: Contains the new data (usually sent via a PUT or PATCH request) that will be used to update the document.
+    Example: { "name": "New Tour", "price": 500 } will update the name and price fields.
+
+Options:
+    new: true:
+    Ensures the updated document is returned, not the original one (before the update).
+
+    runValidators: true:
+    Ensures that the data you are updating meets the schema's validation rules (e.g., required fields, data types).
+
+Why Use These Options?
+new: true:
+Without this, findByIdAndUpdate() would return the document before it was updated, which is usually not what you want.
+
+runValidators: true:
+This ensures that the data being saved follows the same validation rules that were set in the Mongoose schema (e.g., checking required fields, correct data types).
+
+Example Use Case:
+    You have an API endpoint where a user can update a tour’s information by its ID. When a PUT or PATCH request is sent with new data, findByIdAndUpdate() will:
+
+    Find the tour by its ID.
+    Update it with the new data from req.body.
+    Return the updated document after ensuring it meets all validation rules.
+
+
+Summary:
+    findByIdAndUpdate() allows you to find a document by ID and update it.
+    Use new: true to return the updated document.
+    Use runValidators: true to ensure updated data is validated before saving.
