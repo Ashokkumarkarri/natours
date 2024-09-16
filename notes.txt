@@ -1,25 +1,59 @@
-created models folder >> created tourModel.js
+Another way of creating Document:
+in the last lecture we had refactored our code and deleted the some code. so now our toutes will not work.
+now we goona write the real time API.
 
-from server.js we had removed the tourSchema code and pasted to tourModel.
+--------------------------------------------------
+we have two ways to create the documetns:
+  1. const newTour=new Tour({})
+    newTour.save()
 
-const tourSchema = new mongoose.Schema({});
-const Tour = mongoose.model('Tour', tourSchema);
+2. Tour.create(req.body)
+----------------------------------------------------
+In the 1st approach we cereate the document and we call the method on the created document.
+In the 2nd approach we directly called the method on the Tour.
+------------------------------------------------------
+using 2nd approach:
+
+Tour.create(req.body); // this will return a promiss, so we can access it using .then or we can use async, await.
+// inorder to catch errors we use: try,catch.
 
 
-deleted: testTOur in server.js
-exported the Tour from TOurModel and imported in tourConroller.
+------------code -------------------
+exports.createTour = async (req, res) => {
+  try {
+    // const newTour=new Tour({})
+    // newTour.save()
+
+    const newTour = await Tour.create(req.body);
+
+    res.status(201).json({
+      status: 'success',
+      data: {
+        tours: newTour,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'fail',
+      message: err,
+    });
+  }
+};
+---------------------
+
+post man 
+
+{
+    "name":"test tour 10 ashok",
+    "duaration":100,
+    "diffulcity":"medium",
+    "price":100,
+    "rating":2.3,
+    "style":"classic"
+}
+in post man, when we send data, if we send unwanted data to API, it will be ignore.
+the data we defined in schema will only be taken.
+example: style , we did not defined style in schema so the style will not be taken.
 
 
-in tour Controller, we had removed this line.
-// const tours = JSON.parse(
-//   fs.readFileSync(`${__dirname}/../dev-data/data/tours-simple.json`)
-// );
-
-in tourController.js we had removed the tours which depends on local json dummy databas, since we goona use real mongoDB from now.
-deleted all the code which depends on the localDB.
-
-removed fs module,check ID function.
-
-in tourROutes.js : we had commented this code: // router.param('id', tourController.checkID);
-since its depending on checkID fun which has been removed in tourController.
 
