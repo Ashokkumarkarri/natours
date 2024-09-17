@@ -1,18 +1,1 @@
-deleting doc:
-----------------------code--------------------
-exports.deleteTour = async (req, res) => {
-  try {
-    await Tour.findByIdAndDelete(req.params.id);
-    res.status(204).json({
-      status: 'Success',
-      data: null,
-    });
-  } catch (err) {
-    res.status(400).json({
-      status: 'fail',
-      message: err,
-    });
-  }
-};
----------------------------------
-note: according to rust rules it's good pratise that we do return the tour when we delete it.
+added or updated the tourModel.js 
