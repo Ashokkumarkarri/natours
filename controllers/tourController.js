@@ -1,18 +1,24 @@
-const { query } = require('express');
 const Tour = require('../models/tourModel');
 
 exports.getAllTours = async (req, res) => {
   try {
     //BUILD QUERY
+    //1)Filtering
     const queryObj = { ...req.query }; //shallo copy
-    const excludedFiles = ['page', 'sort', 'limit', 'feilds'];
+    const excludedFiles = ['page', 'sort', 'limit', 'fields'];
     excludedFiles.forEach((el) => delete queryObj[el]);
 
-    console.log(req.query, queryObj); //To acess query string
+    //2) Advanced filtering
+    let queryStr = JSON.stringify(queryObj);
+    console.log(queryStr);
+    queryStr = queryStr.replace(/\b(gte|gt|lte|lt)\b/g, (match) => `$${match}`);
 
-    const query = Tour.find(req.query);
-    //the find method will return a query.
+    const query = Tour.find(JSON.parse(queryStr));
+    console.log(JSON.parse(queryStr)); //To acess query string
 
+    //{difficulty:'easy',duration:{$get:5}}
+    // from postman : { difficulty: 'easy', duration: { gte: '5' } }
+    //gte,gt,lte,lt
     // const tours = await Tour.find({
     //   duration: 5,
     //   difficulty: 'easy',
