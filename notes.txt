@@ -1,82 +1,37 @@
-agenda: need to create a script using which we can 
-        1.delete the existing data in mongoDB server.
-        2. and also we can import the data from txt file to mongoDB.
+--------------------------------------------------------------------------------------------
+bug fix:(not able to see logs)
+        we were running the const dotenv = require('dotenv'); after the starting the app.
+        first we should read the env varibles then we should run the app.
+        to fix this:
+        dotenv.config({ path: './config.env' });
+        const app = require('./app');
 
+----------------------------------------------------------------------------------------------------
 
- process.argv:
-    using this we can intract with command link, whatever user will write in terminal or commandline we can have acess to it.
-    process.argv is an array in Node.js that contains the command-line arguments passed when the Node.js process was launched. The first two elements are:
-            1.The path to the Node.js executable.
-            2.The path to the JavaScript file being executed.
+Agenda: make API better, implementing filter to the API.
+        we can use query string to filter the APi.
+        ex: query string = ?duration=5&difficulty=easy
 
-        Example:
-                the script we are going to wrtie in this project: to delete the previous data and import new data. we will write in this file path. (dev-data\data\import-dev-data.js)
-                so when we run the script by doing this: node .\dev-data\data\import-dev-data.js
-                since we are console.log(process.argv): this will give a array with 2 elements.
-                while we running the command, what ever we will add to in the termial will be acessed as a 3rd element in the array. (process.argv)
-                ex: node .\dev-data\data\import-dev-data.js --import
-                so in that array the --import will be the last 3 rd elemetn in the array.
+        console.log(req.query)
+    --------------------------
+   const tours = await Tour.find(req.query);
 
+    // const tours = await Tour.find({
+    //   duration: 5,
+    //   difficulty: 'easy',
+    // });
 
-process.exit(); //this method will forcefull stop the process
+    // const tours = await Tour.find()
+    //   .where('duration')
+    //   .equals(5)
+    //   .where('difficulty')
+    //   .equals('easy');
+    ----------------------------------
+now we need to exclude the page no in the query string,
+when user enter page=2 in the query string, he will not get it, so we need to exclude it from query string.
+we have a created a shallo coppy of query string.
+ on that we ittrate usinging forEach() and exclude all the things we do not required in the query string.
 
--------------------------------------------------------------------------------------
-created a new file in dev-data/data/
-new file_name : import-dev-data.js
-
-we gare going to read a file in dev-data/data/tours-simple.json
-we are going to delte all the files in mongoDB.
-and update the mongoDB with the new data we had read form the file,
--------------------------------------------------------------------------------------
-const fs = require('fs');
-const mongoose = require('mongoose');
-const dotenv = require('dotenv');
-const Tour = require('./../../models/tourModel');
-
-dotenv.config({ path: './config.env' });
-
-const DB = process.env.DATABASE.replace(
-  '<db_password>',
-  process.env.DATABASE_PASSWORD,
-);
-
-mongoose.connect(DB).then(() => {
-  console.log('DB connection successful');
-});
-
-//reading JSON file
-const tours = JSON.parse(
-  fs.readFileSync(`${__dirname}/tours-simple.json`, 'utf-8'),
-);
-
-//Import data into DB
-const importData = async () => {
-  try {
-    await Tour.create(tours);
-    console.log('Data successfully loaded');
-    process.exit();
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-//Delete all Data from collection
-const deleteData = async () => {
-  try {
-    await Tour.deleteMany();
-    console.log('Data successfully Deleted');
-    process.exit(); //this method will forcefull stop the process
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-if (process.argv[2] === '--import') {
-  importData();
-} else if (process.argv[2] === '--delete') {
-  deleteData();
-}
-
-console.log(process.argv);
-
----------------------------------------------------------------------------------------------
+ const queryObj = { ...req.query }; //shallo copy
+    const excludedFiles = ['page', 'sort', 'limit', 'feilds'];
+    excludedFiles.forEach((el) => delete queryObj[el]);
