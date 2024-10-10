@@ -26,6 +26,16 @@ exports.getAllTours = async (req, res) => {
     } else {
       query = query.sort('-createdAt');
     }
+    // 3) Field limiting
+    if (req.query.fields) {
+      const field = req.query.fields.split(',').join(' ');
+      // Converting the comma-separated string into space-separated values.
+      query = query.select(field);
+      // Passing the selected fields to the .select() method to specify which fields should be included in the response.
+    } else {
+      query = query.select('-__v');
+      // Excluding the '__v' field (version key created by MongoDB) from the response.
+    }
 
     //EXECUTE QUERY
     const tours = await query;
