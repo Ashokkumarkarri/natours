@@ -1,37 +1,23 @@
---------------------------------------------------------------------------------------------
-bug fix:(not able to see logs)
-        we were running the const dotenv = require('dotenv'); after the starting the app.
-        first we should read the env varibles then we should run the app.
-        to fix this:
-        dotenv.config({ path: './config.env' });
-        const app = require('./app');
+Implementing sorting:
 
-----------------------------------------------------------------------------------------------------
+    //2) Sorting
+    if (req.query.sort) {
+      // query = query.sort(req.query.sort);
+      // //sort('price ratingsAverage')
+      const sortBy = req.query.sort.split(',').join(' ');
+      console.log(sortBy);
+      query = query.sort(sortBy);
+      //sort('price ratingsAverage')
+    } else {
+      query = query.sort('-createdAt');
+    }
 
-Agenda: make API better, implementing filter to the API.
-        we can use query string to filter the APi.
-        ex: query string = ?duration=5&difficulty=easy
+--------------------------------------
 
-        console.log(req.query)
-    --------------------------
-   const tours = await Tour.find(req.query);
+previousely we had excluded the sorting.
+now we goona add sorting.
+in postMan: http://localhost:8000/api/v1/tours?sort=-price,-ratingsAverage
+            - indicates decending order.
 
-    // const tours = await Tour.find({
-    //   duration: 5,
-    //   difficulty: 'easy',
-    // });
-
-    // const tours = await Tour.find()
-    //   .where('duration')
-    //   .equals(5)
-    //   .where('difficulty')
-    //   .equals('easy');
-    ----------------------------------
-now we need to exclude the page no in the query string,
-when user enter page=2 in the query string, he will not get it, so we need to exclude it from query string.
-we have a created a shallo coppy of query string.
- on that we ittrate usinging forEach() and exclude all the things we do not required in the query string.
-
- const queryObj = { ...req.query }; //shallo copy
-    const excludedFiles = ['page', 'sort', 'limit', 'feilds'];
-    excludedFiles.forEach((el) => delete queryObj[el]);
+in mongoose we have this method called sort, the sort takes the arguments along with space. example: query.sort(price ratingsAverage)
+but from postman or with url we can not send space, for than I am sending it along with coma: ?sort=-price,-ratingsAverage
