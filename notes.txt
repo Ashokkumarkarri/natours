@@ -1,38 +1,24 @@
-Pagination in API - Short Notes
-Purpose:
-Pagination helps manage large datasets by breaking them into smaller, manageable chunks, improving performance and reducing bandwidth usage.
+Aliasing in API:
+  Aliasing is a technique used to create more user-friendly query options in the API.
+  It allows users to access pre-defined query parameters with easier or shorter commands, enhancing the user experience.
+-----------------------------------------------------------------
+changes made in: tourRoutes.js , tourCOntroller.js.
 
-Parameters:
+-----------------tourRoutes.js--------------------------------------
 
-page: The current page number from the query (req.query.page). Default is 1.
-limit: Number of items per page (req.query.limit). Default is 100.
-Skip Calculation:
+router
+  .route('/top-5-cheap')
+  .get(tourController.aliasTopTours, tourController.getAllTours);
 
-skip = (page - 1) * limit
-Determines how many items to skip before fetching the next set of results.
-Query Methods:
+we created a middleware in tourController.js called aliasTopTours.
+  ------------------tourController.js----------------------------------
+exports.aliasTopTours = (req, res, next) => {
+  req.query.limit = '5';
+  req.query.sort = '-ratingsAverage,price';
+  req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
+  next();
+};
+------------------------------------------------------------
 
-.skip(skip): Skips the specified number of documents.
-.limit(limit): Limits the number of documents returned per page.
-Error Handling:
-
-If the skip value exceeds the total number of documents (Tour.countDocuments()), an error is thrown: "This page does not exist."
-Example:
-
-URL: ?page=2&limit=10
-Fetches the 2nd page with 10 results per page.
-
---------------------------------code----------------------------------------
-    //4) Pagination
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 100;
-    const skip = (page - 1) * limit;
-
-    query = query.skip(skip).limit(limit);
-
-    if (req.query.page) {
-      const numTOur = await Tour.countDocuments();
-      if (skip >= numTOur) throw new Error('This page does not exist');
-    }
-
------------------------------
+The aliasTopTours middleware is designed to simplify API requests by automatically applying specific query parameters for users who want to view the top 5 tours. 
+It pre-defines the query parameters like limit, sort, and fields, so the user doesn't have to input them manually.
