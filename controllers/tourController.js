@@ -15,7 +15,7 @@ exports.getAllTours = async (req, res) => {
 
     let query = Tour.find(JSON.parse(queryStr));
 
-    console.log(req.query);
+    // console.log(req.query);
     //2) Sorting
     if (req.query.sort) {
       // query = query.sort(req.query.sort);
@@ -35,6 +35,18 @@ exports.getAllTours = async (req, res) => {
     } else {
       query = query.select('-__v');
       // Excluding the '__v' field (version key created by MongoDB) from the response.
+    }
+
+    //4) Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 100;
+    const skip = (page - 1) * limit;
+
+    query = query.skip(skip).limit(limit);
+
+    if (req.query.page) {
+      const numTOur = await Tour.countDocuments();
+      if (skip >= numTOur) throw new Error('This page does not exist');
     }
 
     //EXECUTE QUERY

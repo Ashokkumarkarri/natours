@@ -1,23 +1,38 @@
-Implementing sorting:
+Pagination in API - Short Notes
+Purpose:
+Pagination helps manage large datasets by breaking them into smaller, manageable chunks, improving performance and reducing bandwidth usage.
 
-    //2) Sorting
-    if (req.query.sort) {
-      // query = query.sort(req.query.sort);
-      // //sort('price ratingsAverage')
-      const sortBy = req.query.sort.split(',').join(' ');
-      console.log(sortBy);
-      query = query.sort(sortBy);
-      //sort('price ratingsAverage')
-    } else {
-      query = query.sort('-createdAt');
+Parameters:
+
+page: The current page number from the query (req.query.page). Default is 1.
+limit: Number of items per page (req.query.limit). Default is 100.
+Skip Calculation:
+
+skip = (page - 1) * limit
+Determines how many items to skip before fetching the next set of results.
+Query Methods:
+
+.skip(skip): Skips the specified number of documents.
+.limit(limit): Limits the number of documents returned per page.
+Error Handling:
+
+If the skip value exceeds the total number of documents (Tour.countDocuments()), an error is thrown: "This page does not exist."
+Example:
+
+URL: ?page=2&limit=10
+Fetches the 2nd page with 10 results per page.
+
+--------------------------------code----------------------------------------
+    //4) Pagination
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 100;
+    const skip = (page - 1) * limit;
+
+    query = query.skip(skip).limit(limit);
+
+    if (req.query.page) {
+      const numTOur = await Tour.countDocuments();
+      if (skip >= numTOur) throw new Error('This page does not exist');
     }
 
---------------------------------------
-
-previousely we had excluded the sorting.
-now we goona add sorting.
-in postMan: http://localhost:8000/api/v1/tours?sort=-price,-ratingsAverage
-            - indicates decending order.
-
-in mongoose we have this method called sort, the sort takes the arguments along with space. example: query.sort(price ratingsAverage)
-but from postman or with url we can not send space, for than I am sending it along with coma: ?sort=-price,-ratingsAverage
+-----------------------------
