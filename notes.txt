@@ -1,24 +1,3 @@
-Aliasing in API:
-  Aliasing is a technique used to create more user-friendly query options in the API.
-  It allows users to access pre-defined query parameters with easier or shorter commands, enhancing the user experience.
------------------------------------------------------------------
-changes made in: tourRoutes.js , tourCOntroller.js.
-
------------------tourRoutes.js--------------------------------------
-
-router
-  .route('/top-5-cheap')
-  .get(tourController.aliasTopTours, tourController.getAllTours);
-
-we created a middleware in tourController.js called aliasTopTours.
-  ------------------tourController.js----------------------------------
-exports.aliasTopTours = (req, res, next) => {
-  req.query.limit = '5';
-  req.query.sort = '-ratingsAverage,price';
-  req.query.fields = 'name,price,ratingsAverage,summary,difficulty';
-  next();
-};
-------------------------------------------------------------
-
-The aliasTopTours middleware is designed to simplify API requests by automatically applying specific query parameters for users who want to view the top 5 tours. 
-It pre-defines the query parameters like limit, sort, and fields, so the user doesn't have to input them manually.
+modified the tourController,
+created a class and made code reusable.
+created the new folder called utils and moved our code there.
