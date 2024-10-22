@@ -1,3 +1,42 @@
-modified the tourController,
-created a class and made code reusable.
-created the new folder called utils and moved our code there.
+aggregation pipeline
+we will create a pipeline our code will go throw it and help us calculate things like AVg,sum etc.
+//aggregate is mongoDB feature but mongoose gives as access to use it 
+aggregation is an regular query.
+    //we will pass elements to aggregate methods as stages.
+    //we use array to pass stages, the order is important here.
+    //we can repeate the stages
+
+postman:http://localhost:8000/api/v1/tours/tour-stats
+-----------------------------------------------------------------------------------
+
+# MongoDB Aggregation Pipeline - Short Notes
+
+## What is the Aggregation Pipeline?
+- Aggregation is a way to process data and perform operations like filtering, grouping, averaging, and summing up results.
+- It works by passing data through multiple stages in a pipeline (like a production line).
+- Each stage modifies or processes the data and sends the output to the next stage.
+
+## Common Stages in Aggregation:
+1. **$match**: Filters the documents based on conditions (like a WHERE clause in SQL).
+   - Example: `{ $match: { ratingsAverage: { $gte: 4.5 } } }`
+   - Filters documents with `ratingsAverage` >= 4.5.
+   
+2. **$group**: Groups data by a specific field and performs calculations like sum, avg, min, max.
+   - Example: `{ $group: { _id: '$difficulty', avgPrice: { $avg: '$price' } } }`
+   - Groups tours by difficulty and calculates the average price.
+
+3. **$sort**: Sorts the documents.
+   - Example: `{ $sort: { avgPrice: 1 } }`
+   - Sorts by `avgPrice` in ascending order.
+
+4. **$project**: Selects specific fields or creates new ones.
+   - Example: `{ $project: { name: 1, price: 1 } }`
+   - Keeps only `name` and `price`.
+
+## Example of Aggregation Pipeline:
+```js
+const stats = await Tour.aggregate([
+  { $match: { ratingsAverage: { $gte: 4.5 } } },
+  { $group: { _id: '$difficulty', avgRating: { $avg: '$ratingsAverage' } } },
+  { $sort: { avgRating: -1 } }
+]);
