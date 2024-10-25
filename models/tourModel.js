@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const slugify = require('slugify');
 const tourSchema = new mongoose.Schema(
   {
     name: {
@@ -9,6 +9,7 @@ const tourSchema = new mongoose.Schema(
       trim: true,
       //trim removes all the black space in the begining and ending.
     },
+    slug: String,
     duration: {
       type: Number,
       required: [true, 'A tour must have a duration'],
@@ -67,6 +68,32 @@ tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7;
 });
 //we can not use the virtual properties while querying, since they are not part of quering. They are part of mongoDB.
+
+//4 type of middlewares are there in mongoose: 1.document, 2.query, 3.aggregate, 4.model middleware.
+//Document Middleware: runs before  .save() and .create()
+//we can use save= for .save(), .create()
+tourSchema.pre('save', function (next) {
+  this.slug = slugify(this.name, { lower: true });
+  next();
+});
+
+//we can have multiple pre save, post hooks.
+//hook is a another terminology for middleware.
+
+// tourSchema.pre('save', function (next) {
+//   console.log('will save document ');
+//   next();
+// });
+
+// tourSchema.post('save', function (doc, next) {
+//   console.log(doc);
+//   next();
+//   //in post we do not have access to :  .this
+//   //we have have access to the doc which is currently saved.
+// });
+
+//we can have middleware that can run before the event occurred, after the event occurred.
+// in case of doc middleware, it suppose to be a save event
 
 const Tour = mongoose.model('Tour', tourSchema);
 //name of the model  , schema

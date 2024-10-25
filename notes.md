@@ -1,47 +1,98 @@
-# Virtual properties
+# Mongoose Middleware Notes
 
-1. Virtual properties are the properties which were defined in schema but not saved in the data-base.
-   They are used to define values that are derived from actual data in the database.
+## Types of Middleware in Mongoose
 
-2. we use virtual properties when we have a property in our DB or schema and we want to do some calculations on or data.
-   Virtual properties are useful when you need to perform calculations or derive a value based on existing properties in your schema. They allow you to manipulate or display data without actually modifying the stored data itself.
+Mongoose supports four types of middleware:
+
+1. **Document Middleware**
+2. **Query Middleware**
+3. **Aggregate Middleware**
+4. **Model Middleware**
+
+---
+
+## Document Middleware
+
+Document middleware specifically works with .save() and .create() methods. This means:
+
+Pre and Post Hooks for document middleware are triggered only when you save a new document or create one, not on other operations.
+Here’s how it works:
+
+Pre-hook (pre): Runs before the .save() or .create() operation.
+Post-hook (post): Runs after the .save() or .create() operation.
+
+---
+
+## Defining Pre-Save Middleware
+
+- `pre` hooks run before saving a document. Example:
+  ```js
+  tourSchema.pre('save', function (next) {
+    this.slug = slugify(this.name, { lower: true });
+    next();
+  });
+  ```
+
+Here, this refers to the current document being saved. In this case, we’re setting a slug property based on the document’s name.
+
+### Post-Save Middleware
+
+In post middleware, `this` is no longer accessible because the document has already been saved.
+Instead, the saved document is passed as an argument (doc):
 
 ```js
-//syntax
-schema.virtual('virtual_property_name').get(callBack_fun(){
-  return this.property_which_is_in_db;
-})
-```
-
-After defining virtual property, we need to explicitly shown in the schema options:
-
-schema options in Mongoose: Schema options are additional settings you can pass as the second argument when defining a Mongoose schema. They control various aspects of the schema's behavior, like how virtual properties are handled, timestamps, versioning, etc.
-
-```js
-//schema options
-{ toJSON: { virtuals: true }, toObject: { virtuals: true } }
-```
-
-Here we are telling to schema that when we get JSON,object as output turn the virtual property's on.
-
-#### Example code:
-
-```js
-//virtual properties
-tourSchema.virtual('durationWeeks').get(function () {
-  return this.duration / 7;
+tourSchema.post('save', function (doc, next) {
+  console.log(doc);
+  next();
 });
 ```
 
-````js
-// const tourSchema = new mongoose.Schema(
-//   {
-//     //schema_definition
-//     name: String,
-//     age: Number,
-//   }, //schema options
-//   { toJSON: { virtuals: true }, toObject: { virtuals: true } },
-// );
-// //arg1=schema_definition, arg2=options-object
-// ```
-````
+post middleware can be used to log or perform actions after the document has been saved.
+
+### Terminology
+
+The term hook is often used interchangeably with middleware in Mongoose.
+
+### Running Middleware Before/After Events
+
+Document middleware can run either before (pre) or after (post) an event.
+
+### Event Triggering in Document Middleware
+
+Document middleware is specifically tied to save and create events only, so it will not trigger on operations like update or find.
+
+---
+
+4 type of middleware's are there in mongoose:
+1.document, 2.query, 3.aggregate, 4.model middleware.
+Document Middleware: runs before .save() and .create()
+we can use save= for .save(), .create()
+
+```js
+tourSchema.pre('save', function (next) {
+  this.slug = slugify(this.name, { lower: true });
+  next();
+});
+```
+
+//we can have multiple pre save, post hooks.
+//hook is a another terminology for middleware.
+
+```js
+// tourSchema.pre('save', function (next) {
+//   console.log('will save document ');
+//   next();
+// });
+```
+
+```js
+tourSchema.post('save', function (doc, next) {
+  console.log(doc);
+  next();
+  //in post we do not have access to :  .this
+  //we have have access to the doc which is currently saved.
+});
+```
+
+//we can have middleware that can run before the event occurred, after the event occurred.
+// in case of doc middleware, it suppose to be a save event
