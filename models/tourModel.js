@@ -59,6 +59,10 @@ const tourSchema = new mongoose.Schema(
       select: false,
     },
     startDates: [Date],
+    secretTour: {
+      type: Boolean,
+      default: false,
+    },
   },
   { toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
@@ -94,6 +98,31 @@ tourSchema.pre('save', function (next) {
 
 //we can have middleware that can run before the event occurred, after the event occurred.
 // in case of doc middleware, it suppose to be a save event
+
+//Query Middleware
+// tourSchema.pre('find', function (next) {
+//   this.find({ secretTour: { $ne: true } });
+//   //give me tours which has the secretTour set not equal to true
+//   next();
+// });
+
+// tourSchema.pre('findOne', function (next) {
+//   this.find({ secretTour: { $ne: true } });
+//   next();
+// });
+
+tourSchema.pre(/^find/, function (next) {
+  //this refers to query
+  this.find({ secretTour: { $ne: true } });
+  this.start = Date.now();
+  //this.start is adding a new property to the query object and storing the current timestamp in it
+  next();
+});
+
+tourSchema.post(/^find/, function (docs, next) {
+  console.log(`API took: ${Date.now() - this.start} milliseconds`);
+  next();
+});
 
 const Tour = mongoose.model('Tour', tourSchema);
 //name of the model  , schema

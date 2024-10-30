@@ -1,98 +1,55 @@
-# Mongoose Middleware Notes
+# Query Middleware Notes
 
-## Types of Middleware in Mongoose
+Query middleware allows us to run a function before or after an query is executed.
 
-Mongoose supports four types of middleware:
+- arg1: name of the query for which we want to run the middleware.
 
-1. **Document Middleware**
-2. **Query Middleware**
-3. **Aggregate Middleware**
-4. **Model Middleware**
+- .then in query middleware will point to a query obj.
 
----
-
-## Document Middleware
-
-Document middleware specifically works with .save() and .create() methods. This means:
-
-Pre and Post Hooks for document middleware are triggered only when you save a new document or create one, not on other operations.
-Here’s how it works:
-
-Pre-hook (pre): Runs before the .save() or .create() operation.
-Post-hook (post): Runs after the .save() or .create() operation.
-
----
-
-## Defining Pre-Save Middleware
-
-- `pre` hooks run before saving a document. Example:
-  ```js
-  tourSchema.pre('save', function (next) {
-    this.slug = slugify(this.name, { lower: true });
-    next();
-  });
-  ```
-
-Here, this refers to the current document being saved. In this case, we’re setting a slug property based on the document’s name.
-
-### Post-Save Middleware
-
-In post middleware, `this` is no longer accessible because the document has already been saved.
-Instead, the saved document is passed as an argument (doc):
+We can chain the query's since we have access to the query obj in query middleware's.
 
 ```js
-tourSchema.post('save', function (doc, next) {
-  console.log(doc);
+//what ever find function we have in mongoose will be effected by this since we used 'find' as arg1
+tourSchema.pre('find', function (next) {
+  this.find({ secretTour: { $ne: true } });
+  //give me tours which has the secretTour set not equal to true
   next();
 });
 ```
 
-post middleware can be used to log or perform actions after the document has been saved.
-
-### Terminology
-
-The term hook is often used interchangeably with middleware in Mongoose.
-
-### Running Middleware Before/After Events
-
-Document middleware can run either before (pre) or after (post) an event.
-
-### Event Triggering in Document Middleware
-
-Document middleware is specifically tied to save and create events only, so it will not trigger on operations like update or find.
-
----
-
-4 type of middleware's are there in mongoose:
-1.document, 2.query, 3.aggregate, 4.model middleware.
-Document Middleware: runs before .save() and .create()
-we can use save= for .save(), .create()
+the above code will only work for find method. it will not work for findOne,findMany,etc..
+so either we can copy the above code and change the find as findOne like below.
 
 ```js
-tourSchema.pre('save', function (next) {
-  this.slug = slugify(this.name, { lower: true });
+tourSchema.pre('findOne', function (next) {
+  this.find({ secretTour: { $ne: true } });
   next();
 });
 ```
 
-//we can have multiple pre save, post hooks.
-//hook is a another terminology for middleware.
+- The best best way is to use regular expression /^/.
+  here we used regular express /^find/.
+- In /^find/, the ^find part is a regular expression pattern that matches any query method starting with "find".
+
+* The / characters define the boundaries of the regular expression.
+  / ... /: The opening and closing slashes mark the start and end of the regular expression.
+  - Without these, JavaScript would interpret ^find as a string of characters, not as a pattern for matching text.
 
 ```js
-// tourSchema.pre('save', function (next) {
-//   console.log('will save document ');
-//   next();
-// });
-```
-
-```js
-tourSchema.post('save', function (doc, next) {
-  console.log(doc);
+tourSchema.pre(/^find/, function (next) {
+  //this refers to query
+  this.find({ secretTour: { $ne: true } });
+  this.start = Date.now();
+  //this.start is adding a new property to the query object and storing the current timestamp in it
   next();
-  //in post we do not have access to :  .this
-  //we have have access to the doc which is currently saved.
 });
 ```
 
-//we can have middleware that can run before the event occurred, after the event occurred.
-// in case of doc middleware, it suppose to be a save event
+```js
+tourSchema.post(/^find/, function (docs, next) {
+  console.log(`API took: ${Date.now() - this.start} milliseconds`);
+  next();
+});
+```
+
+For post , we have access to the all the docs which has been return from the pre query.
