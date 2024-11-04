@@ -1,44 +1,45 @@
-### Error Handling in Express
+# Global Error-Handling Middleware
 
-In Express.js, handling errors, especially for routes that are not defined, is crucial to provide meaningful responses to clients.
+- It's a way to handle all errors in one place in an Express app.
+- Ensures consistent and centralized error responses.
 
----
+#### Creating an global Error
 
-#### Default Behavior
-
-- By default, when a user tries to access a URL that does not exist, Express returns an HTML response.
-- To customize this and send a JSON response, I can define a "catch-all" route.
-
----
-
-### Setting Up a 404 Error Route
-
-- I use `app.all('*', ...)` to handle all requests that don’t match any of the defined routes.
-- The ``symbol acts as a wildcard, capturing any request that does not match`/api/v1/tours`or`/api/v1/users`.
-- Example:
-
-  ```js
-  // 3) Routes
-  app.use('/api/v1/tours', tourRouter);
-  app.use('/api/v1/users', userRouter);
-
-  // Catch-all route for undefined URLs
-  app.all('*', (req, res, next) => {
-    res.status(404).json({
-      status: 'fail',
-      message: `Can't find ${req.originalUrl} on this server!`,
-    });
+```js
+app.use((err, req, res, next) => {
+  err.statusCode = err.statusCode || 500;
+  err.status = err.status || 'error';
+  res.status(err.statusCode).json({
+    status: err.status,
+    message: err.message,
   });
-  ```
+});
+```
 
-  - **Explanation**:
-    - `app.all('*')`: Captures all HTTP methods (GET, POST, PUT, DELETE, etc.) for any undefined route.
-    - `res.status(404)`: Sets the HTTP status code to 404, indicating "Not Found."
-    - `req.originalUrl`: Provides the original URL requested by the client.
-    - The JSON response includes a `status` of "fail" and a message that the URL is not found.
+when we specify the 4 args the express will get to know that it's an error handling middleware.
 
-### Note
+---
 
-- This ensures my API returns a consistent JSON response when a client tries to access an undefined route, making error handling more straightforward.
+#### Using global error middleware
 
-I can now handle errors more efficiently and provide a better API experience.
+```js
+app.all('*', (req, res, next) => {
+  // res.status(404).json({
+  //   status: 'fail',
+  //   message: `can't find ${req.originalUrl} on this server!`,
+  // });
+  const err = new Error(`can't find ${req.originalUrl} on this server!`); // we pass error message
+  err.status = 'fail';
+  err.statusCode = 404;
+  next(err);
+});
+```
+
+- when next has passed with error, express will get to know that there is an error, and express will leave the next middleware stack and directly execute the error middleware.
+
+---
+
+##### new Error()
+
+Is an built in constructor in JS
+we use new **Error()** to create an error object.
