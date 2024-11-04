@@ -1,44 +1,22 @@
-# Error Handling in Async Functions in Express
+# Adding 404 Not Found Errors in Express
 
-When using `async/await` in Express applications, it's essential to handle errors efficiently to prevent crashes or unexpected failures. Here's how to handle errors using a utility function.
+## Purpose
 
-## The Problem
+To handle cases when a resource (like a tour) cannot be found in the database and return a proper error message.
 
-- **Async/Await**: If an error occurs inside an `async` function (e.g., during a database query), it won't be caught automatically.
-- **Result**: The application may fail or behave unpredictably if errors aren't handled correctly.
-
-## Solution: `catchAsync` Utility Function
-
-The `catchAsync` function wraps your `async` functions and ensures errors are passed to the next middleware for handling.
-
-### Implementation
+## Code Example
 
 ```javascript
-// catchAsync.js
-module.exports = (fn) => {
-  return (req, res, next) => {
-    fn(req, res, next).catch(next); // Catches errors and passes to next()
-  };
-};
+if (!tour) {
+  // If the tour with the given ID doesn't exist, pass an error to the next middleware
+  return next(new AppError('No tour found with that ID', 404));
+}
 ```
 
-- Function Wrapper: Takes an async function (fn) and returns a middleware function.
-- Error Handling: .catch(next) catches any errors and calls next() to trigger Express's error middleware.
+### Explanation
 
-### Error-Handling Middleware
-
-Make sure to define error-handling middleware to catch and respond to errors:
-
-```js
-app.use((err, req, res, next) => {
-  res.status(err.statusCode || 500).json({
-    status: err.status || 'error',
-    message: err.message,
-  });
-});
-```
-
-### Advantages
-
-1. Cleaner Code: No repetitive try-catch blocks.
-2. Centralized Handling: All errors are handled in one place, simplifying debugging and error management.
+Check if Resource Exists: if (!tour) checks if the tour object is null or undefined.
+Creating a Custom Error: new AppError('No tour found with that ID', 404) creates an error with:
+Message: Describes the issue.
+Status Code: 404 indicates "Not Found".
+Passing the Error: next() sends the error to the global error-handling middleware.
