@@ -1,20 +1,50 @@
-## 010 Handling Invalid Database IDs
+## Handling validation errors in production env.
 
-when we try to enter the same duplicate name while we are creating the new tour.
-since the name already there we might get an error.
-To handed that error in product env we had written this code.
+we have set some validators in our tourModel
 
-if the env is dev we need all the info from the error, like what's happing, where, how all this.
-but when the code is in production user does want to know all that, he just wanted to know weather app is working, if not what error, what code.
+#### example:
 
-```jsx
-if (error.code === 11000) error = handelDuplicateFieldsDB(error);
+```js
+    name: {
+      type: String,
+      required: [true, 'A tour must have a name'],
+      unique: true,
+      maxlength: [40, 'A Tour name must have less or equal then 40 characters'],
+      minlength: [10, 'A Tour name must have grater or equal to 10 characters'],
+    },
+    difficulty: {
+      type: String,
+      required: [true, 'A tour must have a difficulty'],
+      enum: {
+        values: ['easy', 'medium', 'difficulty'],
+        message: 'Difficulty is either: easy,medium,difficult',
+      },
+    },
+    ratingsAverage: {
+      type: Number,
+      default: 4.1,
+      min: [1, 'Rating must be above 1.0'],
+      max: [5, 'Rating must be below 5.0'],
+    },
+
 ```
 
-```jsx
-const handelDuplicateFieldsDB = (err) => {
-  let val = err.keyValue.name;
-  const message = `Duplicate field value: ${val}. Please use another value!`;
+The data enter by the user will be pass these validator the error will be sent.
+Now we need to handle those errors.
+
+---
+
+```js
+//function to handel the validationErros
+const handelValidationErrorDB = (err) => {
+  const errors = Object.values(err.errors).map((val) => val.message);
+  const message = `Invalid input data.. ${errors.join('. ')}`;
   return new AppError(message, 400);
 };
+```
+
+calling that fun
+
+```js
+if (err.name === 'ValidationError') error = handelValidationErrorDB(error);
 ```
