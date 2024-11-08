@@ -1,35 +1,20 @@
 ## 010 Handling Invalid Database IDs
 
-Sometimes Mongoose will send an error that won’t be an instance of our `AppError` class, but we still want to send it to the client. This error may be one of three types;
+when we try to enter the same duplicate name while we are creating the new tour.
+since the name already there we might get an error.
+To handed that error in product env we had written this code.
 
-1. **Cast Error**: Happens when a MongoDB ID is invalid. Handled by `handleCastErrorDB`, which returns a 400 status with a message indicating the invalid field.
-2. **Duplicate Field Error**: Occurs when a unique field is duplicated (like using the same email for two users). `handleDuplicateFieldsDB` captures this with error code `11000` and returns a message to use another value.
-3. **Validation Error**: Triggered by incorrect data format (e.g., an invalid rating). `handleValidationErrorDB` loops through each error and joins messages into one.
+if the env is dev we need all the info from the error, like what's happing, where, how all this.
+but when the code is in production user does want to know all that, he just wanted to know weather app is working, if not what error, what code.
 
-**Environment-Based Response**:
-
-- **Development**: Sends detailed error info (status, message, stack).
-- **Production**: Sends minimal info, hiding sensitive details.
-
-This setup ensures a smooth user experience by only displaying relevant error messages to clients, especially in production.
-
-```js
-  if (process.env.NODE_ENV === 'development') {
-    sendErrorDev(err, res);
-  } else if (process.env.NODE_ENV === 'production') {
-    let error = { ...err }; //shallo coppy
-    if (err.name === 'CastError') {
-      error = handelCastErrorDB(error);//we created this fun and calling it
-    }
-    sendErrorProd(error, res);
-  }
-};
-
+```jsx
+if (error.code === 11000) error = handelDuplicateFieldsDB(error);
 ```
 
-```js
-const handelCastErrorDB = (err) => {
-  const message = `Invalid  ${err.path}: ${err.value}`;
+```jsx
+const handelDuplicateFieldsDB = (err) => {
+  let val = err.keyValue.name;
+  const message = `Duplicate field value: ${val}. Please use another value!`;
   return new AppError(message, 400);
 };
 ```
