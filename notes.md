@@ -1,50 +1,42 @@
-## Handling validation errors in production env.
+# Handling Unhandled Rejections in Node.js
 
-we have set some validators in our tourModel
+In Node.js, **unhandled rejections** occur when a promise is rejected and there’s no `.catch()` handler to catch that rejection.
+Handling unhandled rejections gracefully is important to prevent the application from running in an unstable state.
 
-#### example:
+Here's a breakdown of the code:
 
-```js
-    name: {
-      type: String,
-      required: [true, 'A tour must have a name'],
-      unique: true,
-      maxlength: [40, 'A Tour name must have less or equal then 40 characters'],
-      minlength: [10, 'A Tour name must have grater or equal to 10 characters'],
-    },
-    difficulty: {
-      type: String,
-      required: [true, 'A tour must have a difficulty'],
-      enum: {
-        values: ['easy', 'medium', 'difficulty'],
-        message: 'Difficulty is either: easy,medium,difficult',
-      },
-    },
-    ratingsAverage: {
-      type: Number,
-      default: 4.1,
-      min: [1, 'Rating must be above 1.0'],
-      max: [5, 'Rating must be below 5.0'],
-    },
+1. **Listening for `unhandledRejection`**:
 
-```
+   ```javascript
+   process.on('unhandledRejection', (err) => {
+     // This event listener captures any unhandled promise rejections.
+   });
+   ```
 
-The data enter by the user will be pass these validator the error will be sent.
-Now we need to handle those errors.
+   Using `process.on('unhandledRejection')`, you can listen for unhandled rejections globally. If any promise is rejected without a `.catch()` method, it will be caught here.
 
----
+2. **Logging the Error**:
 
-```js
-//function to handel the validationErros
-const handelValidationErrorDB = (err) => {
-  const errors = Object.values(err.errors).map((val) => val.message);
-  const message = `Invalid input data.. ${errors.join('. ')}`;
-  return new AppError(message, 400);
-};
-```
+   ```javascript
+   console.log(err.name, err.message);
+   console.log('UNHANDLED REJECTION!🔥 Shutting down...');
+   ```
 
-calling that fun
+   This logs the error’s name and message, helping to identify the cause of the unhandled rejection.
 
-```js
-if (err.name === 'ValidationError') error = handelValidationErrorDB(error);
-```
+3. **Gracefully Shutting Down**:
+
+   ```javascript
+   server.close(() => {
+     process.exit(1); // code 0 for success, code 1 for uncaught exceptions
+   });
+   ```
+
+   - `server.close()` stops the server from accepting new connections but allows ongoing requests to complete.
+   - `process.exit(1)` then terminates the Node.js process with a non-zero exit code (`1`), which typically signifies an error.
+
+This approach helps prevent any unpredictable behavior by safely terminating the application in response to unhandled promise rejections. This way, you can restart it in a clean state (usually with a process manager like PM2 or Docker).
+
+### Additional Note
+
+For production systems, it’s recommended to add logging or alerts (like sending the error to an error-tracking service) before shutting down, so you have a record of unhandled rejections.
