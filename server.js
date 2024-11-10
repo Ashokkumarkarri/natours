@@ -1,5 +1,13 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
+
+//Catching Uncaught Exceptions
+process.on('uncaughtException', (err) => {
+  console.log(err.name, err.message);
+  console.log('UNHANDLED REJECTION!🔥 Shutting down...');
+  process.exit(1); //code 0:success, code 1:uncaught exception
+});
+
 dotenv.config({ path: './config.env' });
 const app = require('./app');
 
