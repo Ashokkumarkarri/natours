@@ -1,76 +1,95 @@
-## Password Hashing and Validation in Mongoose with bcryptjs
-
-`npm i bcryptjs`
-
-This code snippet outlines how to securely handle passwords in a Mongoose schema by using the `bcryptjs` library to hash passwords and enforce password confirmation validation. Here’s a breakdown of each part:
+resources:
+npm i jsonwebtoken
 
 ---
 
-## Schema Definitions
+## Implementing JWT for User Signup
 
-### Password Field
+## Purpose of JWT in Authentication
 
-```javascript
-password: {
-  type: String,
-  required: [true, 'User must have a password'],
-  minlength: 8,
-}
+- **JSON Web Token (JWT)** is a secure way to handle authentication.
+- JWT contains encoded information (payload) that verifies the user's identity and can include custom data.
+- Tokens are signed with a secret key, ensuring they cannot be modified without detection.
+
+## Code Walkthrough
+
+### 1. Required Modules
+
+```js
+const jwt = require('jsonwebtoken');
+Use code with caution.
 ```
 
-- **Type**: `String`, stores the hashed password.
-- **Required**: Ensures that every user must provide a password.
-- **Minimum Length**: Set to 8 characters to enforce a basic security measure.
+jsonwebtoken is a library for generating and verifying JWTs.
 
-### Password Confirmation Field
+### 2. Signup Function
 
-```javascript
-passwordConfirm: {
-  type: String,
-  required: [true, 'Please confirm your password'],
-  validate: {
-    validator: function (el) {
-      return el === this.password;
-    },
-    message: 'Passwords are not the same!',
-  },
-}
+This function is used to register a new user and return a JWT for client-side authentication.
+
+```js
+exports.signup = catchAsync(async (req, res, next) => { ... });
 ```
 
-- **Required**: Prompts the user to confirm their password.
-- **Custom Validator**: Checks if `passwordConfirm` matches `password`. This validation only runs on `.save()` and `.create()` operations, ensuring passwords are identical during account creation or update.
+catchAsync is a wrapper function that manages errors in asynchronous functions.
 
----
+### 3. Creating a New User
 
-## Pre-Save Middleware
-
-```javascript
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-
-  // Hash the password with a cost of 12
-  this.password = await bcrypt.hash(this.password, 12);
-
-  // Remove `passwordConfirm` from the saved document
-  this.passwordConfirm = undefined;
-  next();
+```js
+const newUser = await User.create({
+  name: req.body.name,
+  email: req.body.email,
+  password: req.body.password,
+  passwordConfirm: req.body.passwordConfirm,
 });
 ```
 
-- **Purpose**: Ensures that passwords are hashed before being saved to the database.
-- **Condition**: `if (!this.isModified('password')) return next();`
-  - This condition prevents the password from being rehashed if it hasn’t been modified, which is useful when updating other user details (e.g., name or email).
-- **Hashing with `bcrypt`**:
-  - Uses a **cost factor of 12** for hashing, which balances security and performance.
-- **Removing `passwordConfirm`**:
-  - `passwordConfirm` is deleted before saving since it’s only needed temporarily for validation and shouldn’t be stored in the database.
+- A new user is created using `User.create()` with values from `req.body`.
+- **Note**: `passwordConfirm` is only used to verify matching passwords during signup and is not saved in the database.
 
----
+### 4. Generating JWT
+
+```js
+const token = jwt.sign({ id: newUser.\_id }, process.env.JWT_SECRET, {
+expiresIn: process.env.JWT_EXPRESS_IN,
+});
+```
+
+- **jwt.sign()** is used to create the token.
+  - **Payload**: `{ id: newUser._id }`, includes the user ID, uniquely identifying the user.
+  - **Secret Key**: `process.env.JWT_SECRET`, the secret used to securely sign the token.
+  - **Options**:
+    - **expiresIn**: `process.env.JWT_EXPRESS_IN`, specifies the token’s lifespan, here set to `90d` (90 days).
+
+### 5. Responding to Client
+
+```js
+res.status(201).json({
+  status: 'Success',
+  token: token,
+  data: {
+    user: newUser,
+  },
+});
+```
+
+- **status**: HTTP status `201`, indicating the user has been created.
+- **token**: The JWT is sent back to the client.
+- **data**: Includes the user information for client reference.
+
+## Environment Variables
+
+```
+JWT_SECRET=my-ultra-secure-and-best-powerf
+JWT_EXPRESS_IN=90d
+```
+
+- **JWT_SECRET**: A secret key used to sign tokens.
+- **JWT_EXPRESS_IN**: Sets the token’s expiration duration, here as `90d` (90 days).
 
 ## Summary
 
-- **Purpose**: Ensures secure storage and validation of user passwords by hashing them and validating confirmation on account creation or update.
-- **Security**: Hashing passwords with `bcrypt` and a cost factor adds significant protection against brute-force attacks.
-- **Efficiency**: Middleware only hashes the password if it’s been modified, optimizing performance during other user updates.
+This signup implementation:
 
-This approach follows best practices in password management, providing strong user authentication while keeping code maintainable and efficient.
+1. **Creates** a new user and securely generates a JWT.
+2. **Returns** the token to the client for use in protected routes.
+3. **Secures** user sessions without storing sensitive information on the client, relying on the secret key to validate the JWT.

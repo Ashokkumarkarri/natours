@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema({
 });
 
 userSchema.pre('save', async function (next) {
-  //user updated his name, this time we do not want the pasword to be encripted.
+  //user updated his name, this time we do not want the password to be encrypt.
 
   //only run this fun when pass is modified
   if (!this.isModified('password')) return next();
