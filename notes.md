@@ -1,95 +1,62 @@
-resources:
-npm i jsonwebtoken
+## login Function - Quick Notes
+
+1. Extracts email and password from request body.
+
+2. `Validation Checks`:
+
+   - `Check #1`: Ensures both email and password are provided.
+
+   - `Check #2`: Verifies if a user with that email exists and if the provided password is correct (using correctPassword method).
+
+3. `Token Creation`:
+   If all checks pass, generates a JWT token using signToken with the user's ID.
+
+4. `Response`:
+   Sends a success status and the JWT token to the client for authentication.
 
 ---
 
-## Implementing JWT for User Signup
+### Login Function Overview
 
-## Purpose of JWT in Authentication
+1. **Extract Email and Password**:
 
-- **JSON Web Token (JWT)** is a secure way to handle authentication.
-- JWT contains encoded information (payload) that verifies the user's identity and can include custom data.
-- Tokens are signed with a secret key, ensuring they cannot be modified without detection.
+   - Extracts `email` and `password` from the request body.
 
-## Code Walkthrough
+   ```jsx
+   const email = req.body.email;
+   const password = req.body.password;
+   ```
 
-### 1. Required Modules
+2. **Validation Check**:
 
-```js
-const jwt = require('jsonwebtoken');
-Use code with caution.
-```
+   - Checks if both `email` and `password` exist.
+   - Returns an error if missing.
 
-jsonwebtoken is a library for generating and verifying JWTs.
+   ```jsx
+   if (!email || !password)
+     return next(new AppError('Provide email and password', 400));
+   ```
 
-### 2. Signup Function
+3. **Check User Existence & Password Match**:
 
-This function is used to register a new user and return a JWT for client-side authentication.
+   - Finds user by `email` and includes the `password` field.
+   - Uses instance method `correctPassword` to verify password match.
+   - Returns error if user is not found or password is incorrect.
 
-```js
-exports.signup = catchAsync(async (req, res, next) => { ... });
-```
+   ```jsx
+   const user = await User.findOne({ email }).select('+password');
+   if (!user || !(await user.correctPassword(password, user.password))) {
+     return next(new AppError('Incorrect email or password', 401));
+   }
+   ```
 
-catchAsync is a wrapper function that manages errors in asynchronous functions.
+4. **Generate JWT Token**:
 
-### 3. Creating a New User
+   - Calls `signToken` function to create a JWT using the user's ID.
 
-```js
-const newUser = await User.create({
-  name: req.body.name,
-  email: req.body.email,
-  password: req.body.password,
-  passwordConfirm: req.body.passwordConfirm,
-});
-```
+   ```jsx
+   const token = signToken(user._id);
+   ```
 
-- A new user is created using `User.create()` with values from `req.body`.
-- **Note**: `passwordConfirm` is only used to verify matching passwords during signup and is not saved in the database.
-
-### 4. Generating JWT
-
-```js
-const token = jwt.sign({ id: newUser.\_id }, process.env.JWT_SECRET, {
-expiresIn: process.env.JWT_EXPRESS_IN,
-});
-```
-
-- **jwt.sign()** is used to create the token.
-  - **Payload**: `{ id: newUser._id }`, includes the user ID, uniquely identifying the user.
-  - **Secret Key**: `process.env.JWT_SECRET`, the secret used to securely sign the token.
-  - **Options**:
-    - **expiresIn**: `process.env.JWT_EXPRESS_IN`, specifies the token’s lifespan, here set to `90d` (90 days).
-
-### 5. Responding to Client
-
-```js
-res.status(201).json({
-  status: 'Success',
-  token: token,
-  data: {
-    user: newUser,
-  },
-});
-```
-
-- **status**: HTTP status `201`, indicating the user has been created.
-- **token**: The JWT is sent back to the client.
-- **data**: Includes the user information for client reference.
-
-## Environment Variables
-
-```
-JWT_SECRET=my-ultra-secure-and-best-powerf
-JWT_EXPRESS_IN=90d
-```
-
-- **JWT_SECRET**: A secret key used to sign tokens.
-- **JWT_EXPRESS_IN**: Sets the token’s expiration duration, here as `90d` (90 days).
-
-## Summary
-
-This signup implementation:
-
-1. **Creates** a new user and securely generates a JWT.
-2. **Returns** the token to the client for use in protected routes.
-3. **Secures** user sessions without storing sensitive information on the client, relying on the secret key to validate the JWT.
+5. **Send Response with Token**:
+   - Responds with status `200` and includes the token in the response.
