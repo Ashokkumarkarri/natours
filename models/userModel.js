@@ -50,7 +50,7 @@ userSchema.pre('save', async function (next) {
   this.passwordConfirm = undefined;
   next();
 });
-//instant method, a method which will be available in every file.
+//instance method, a method which will be available in every file.
 userSchema.methods.correctPassword = async function (
   candidatePassword,
   userPassword,

@@ -41,12 +41,12 @@ exports.login = catchAsync(async (req, res, next) => {
 
   //1)check if email and password exists
   if (!email || !password) {
-    return next(new AppError('Please provide email and password', 400));
+    const error = new AppError('Please provide email and password', 400);
+    return next(error);
   }
 
   //2)check if user exists & password is correct
   const user = await User.findOne({ email: email }).select('+password');
-
   if (!user || !(await user.correctPassword(password, user.password))) {
     return next(new AppError('Incorrect email or password', 401));
   }
@@ -56,4 +56,32 @@ exports.login = catchAsync(async (req, res, next) => {
     status: 'success',
     token,
   });
+});
+
+exports.protect = catchAsync(async (req, res, next) => {
+  //1)Getting token and check it's there
+  let token;
+  if (
+    req.headers.authorization &&
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    token = req.headers.authorization.split(' ')[1];
+  }
+  console.log(token);
+
+  if (!token) {
+    const error = new AppError(
+      'you are not logged in! please log in to get access',
+      401,
+    );
+    return next(error);
+  }
+
+  //2)Verification token
+
+  //3)check if user still exists
+
+  //4)check if user change password after the token was issues
+
+  next();
 });
