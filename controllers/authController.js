@@ -1,3 +1,4 @@
+const { promisify } = require('util');
 const jwt = require('jsonwebtoken');
 const User = require('./../models/userModel');
 const catchAsync = require('./../utils/catchAsync');
@@ -15,6 +16,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     email: req.body.email,
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
+    passwordChangedAt: req.body.passwordChangedAt,
   });
 
   //.sing(payload,secret,{options})
@@ -67,7 +69,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   ) {
     token = req.headers.authorization.split(' ')[1];
   }
-  console.log(token);
+  // console.log(token);
 
   if (!token) {
     const error = new AppError(
@@ -77,11 +79,23 @@ exports.protect = catchAsync(async (req, res, next) => {
     return next(error);
   }
 
-  //2)Verification token
-
+  //2)Verification token : if the token is tampered or not
+  const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+  console.log(decoded);
   //3)check if user still exists
-
+  const currentUser = await User.findById(decoded.id);
+  if (!currentUser) {
+    return next(
+      new AppError('The user belonging to the token does not exist', 401),
+    );
+  }
   //4)check if user change password after the token was issues
-
+  if (currentUser.changedPasswordAfter(decoded.iat)) {
+    return next(
+      new AppError('User recently changed password!, please login again.', 401),
+    );
+  }
+  //Grant Access to Protected Route
+  req.user = currentUser; // this is for future. we can use it in next middleware.
   next();
 });

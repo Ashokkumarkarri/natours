@@ -1,32 +1,49 @@
-`Agenda`: Restrict access to routes, only logged-in users can access these routes. This improves security by ensuring that only authenticated users can access certain app features.
+## Verify:
 
-### Steps Explained:
+In verification, we check whether the token has been modified or has expired.
+We use the `jwt.verify` method for this purpose.
 
-1. **Extract Token**:
-   - **Logic**: Look for a token in the `Authorization` header.
-   - **Reason**: This token identifies the user session and is required for validation.
-2. **Check Token Presence**:
-   - **Logic**: If no token, return an error.
-   - **Reason**: Users must be logged in to access the protected route.
-3. **Verify Token**:
-   - **Logic**: (To be implemented) Use a library (like `jsonwebtoken`) to verify the token.
-   - **Reason**: Ensures the token is genuine and hasn’t been altered.
-4. **Confirm User Exists**:
-   - **Logic**: Query database to check if the user still exists.
-   - **Reason**: Users may be deleted, so this check prevents access for removed users.
-5. **Check Password Change**:
-   - **Logic**: Ensure token was issued after the last password change.
-   - **Reason**: If the user changed their password, older tokens should be invalidated for security.
-6. **Allow Access**:
-   - **Logic**: If all checks pass, call `next()` to grant access to the route.
-   - **Reason**: Only verified users proceed to the protected feature.
+If we manipulate the payload of a JWT, it generates a different JWT. When we try to access data using this manipulated JWT, an error occurs.
+The error is called `JsonWebTokenError`.
 
-**Outcome**: This middleware ensures that only authenticated, valid users can access secure routes, protecting sensitive functionality from unauthorized access.
+```js
+const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
+console.log(decoded);
+```
+
+## Check if User Still Exists:
+
+If a user holds a valid JWT but their account has been deleted, they should no longer have access.
+This scenario ensures proper access control.
+
+```js
+const currentUser = await User.findById(decoded.id);
+if (!currentUser) {
+  return next(
+    new AppError('The user belonging to the token does not exist', 401),
+  );
+}
+```
+
+## Check if User Changed Password After Token Issuance:
+
+Use a `static method` in the userModel to verify if the user has changed their password after the token was issued.
+If the password was changed, access should be denied.
+
+```js
+if (currentUser.changedPasswordAfter(decoded.iat)) {
+  return next(
+    new AppError('User recently changed password! Please login again.', 401),
+  );
+}
+```
 
 ---
 
-we will add an middleware in front the route, so the first this middleware will get executed and go through the steps we define, and if it passes all the checks then it will go to the route.
+## Give Access:
 
-```js
-  .get(authController.protect, tourController.getAllTours)
+If all tests are successful, the user is granted access to the protected routes.
+
+```
+
 ```
