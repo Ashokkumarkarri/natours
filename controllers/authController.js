@@ -17,6 +17,7 @@ exports.signup = catchAsync(async (req, res, next) => {
     password: req.body.password,
     passwordConfirm: req.body.passwordConfirm,
     passwordChangedAt: req.body.passwordChangedAt,
+    role: req.body.role,
   });
 
   //.sing(payload,secret,{options})
@@ -99,3 +100,18 @@ exports.protect = catchAsync(async (req, res, next) => {
   req.user = currentUser; // this is for future. we can use it in next middleware.
   next();
 });
+
+// Middleware to restrict actions based on user roles
+exports.restrictTo = (...roles) => {
+  //...roles : rest parameter syntax
+  return (req, res, next) => {
+    // Example: roles = ['admin', 'lead-guide']
+    // Check if the user's role is included in the allowed roles
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError('You do not have permission to perform this action', 403),
+      );
+    }
+    next(); // Proceed if authorized
+  };
+};

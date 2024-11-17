@@ -1,49 +1,72 @@
-## Verify:
+## 011 **Authorization: User Roles and Permissions**
 
-In verification, we check whether the token has been modified or has expired.
-We use the `jwt.verify` method for this purpose.
+### **Agenda**
 
-If we manipulate the payload of a JWT, it generates a different JWT. When we try to access data using this manipulated JWT, an error occurs.
-The error is called `JsonWebTokenError`.
+Determine if a user is allowed to perform a specific action based on their role.
 
-```js
-const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
-console.log(decoded);
-```
+**Example:** Check if a user has permission to delete a specific route.
 
-## Check if User Still Exists:
+---
 
-If a user holds a valid JWT but their account has been deleted, they should no longer have access.
-This scenario ensures proper access control.
+### **Steps to Implement**
 
-```js
-const currentUser = await User.findById(decoded.id);
-if (!currentUser) {
-  return next(
-    new AppError('The user belonging to the token does not exist', 401),
-  );
-}
-```
+### **Step 1: Update the User Model with a Role Field**
 
-## Check if User Changed Password After Token Issuance:
+Add a `role` field to define user roles with predefined values:
 
-Use a `static method` in the userModel to verify if the user has changed their password after the token was issued.
-If the password was changed, access should be denied.
+```jsx
 
-```js
-if (currentUser.changedPasswordAfter(decoded.iat)) {
-  return next(
-    new AppError('User recently changed password! Please login again.', 401),
-  );
+role: {
+  type: String,
+  enum: ['user', 'guide', 'lead-guide', 'admin'], // Allowed roles
+  default: 'user', // Default role
 }
 ```
 
 ---
 
-## Give Access:
+### **Step 2: Create Middleware to Restrict Access**
 
-If all tests are successful, the user is granted access to the protected routes.
+Implement logic to verify if a user's role matches the required permissions.
 
+```jsx
+// Middleware to restrict actions based on user roles
+exports.restrictTo = (...roles) => {
+  return (req, res, next) => {
+    // Example: roles = ['admin', 'lead-guide']
+    // Check if the user's role is included in the allowed roles
+    if (!roles.includes(req.user.role)) {
+      return next(
+        new AppError('You do not have permission to perform this action', 403),
+      );
+    }
+    next(); // Proceed if authorized
+  };
+};
 ```
 
+---
+
+### **Step 3: Update the Route**
+
+Integrate the middleware into the route to restrict specific actions.
+
+```jsx
+router
+  .route('/:id')
+  .get(tourController.getTour) // Public access
+  .patch(tourController.updateTour) // Restricted to certain roles
+  .delete(
+    authController.protect, // Ensure the user is authenticated
+    authController.restrictTo('admin', 'lead-guide'), // Restrict to specific roles
+    tourController.deleteTour, // Controller for deleting the tour
+  );
 ```
+
+---
+
+### **Key Points**
+
+- **Role Management:** Use the `enum` type to define allowed roles in the database schema.
+- **Middleware Logic:** Use `rest parameter syntax` to pass allowed roles dynamically.
+- **Authorization in Routes:** Chain middleware functions for authentication (`protect`) and role-based authorization (`restrictTo`).
