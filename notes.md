@@ -1,72 +1,56 @@
-## 011 **Authorization: User Roles and Permissions**
+### Password Reset Process:
 
-### **Agenda**
-
-Determine if a user is allowed to perform a specific action based on their role.
-
-**Example:** Check if a user has permission to delete a specific route.
+1. **Requesting a Password Reset**:
+   - The user provides their email and sends a POST request to the "forgot password" route.
+   - A random reset token is generated (not a JSON Web Token) and sent to the user's email.
+2. **Resetting the Password**:
+   - The user uses the token from the email to send another POST request, this time to the "reset password" route.
+   - Along with the token, the user includes their new password.
+   - If everything is valid, the system updates the user's password.
 
 ---
 
-### **Steps to Implement**
+## Code:
 
-### **Step 1: Update the User Model with a Role Field**
-
-Add a `role` field to define user roles with predefined values:
-
-```jsx
-
-role: {
-  type: String,
-  enum: ['user', 'guide', 'lead-guide', 'admin'], // Allowed roles
-  default: 'user', // Default role
-}
+```js
+router.post('/forgotPassword', authController.forgotPassword); //only receives email address.
+router.post('/resetPassword', authController.resetPassword); //receives token and the  new password.
 ```
 
----
-
-### **Step 2: Create Middleware to Restrict Access**
-
-Implement logic to verify if a user's role matches the required permissions.
-
 ```jsx
-// Middleware to restrict actions based on user roles
-exports.restrictTo = (...roles) => {
-  return (req, res, next) => {
-    // Example: roles = ['admin', 'lead-guide']
-    // Check if the user's role is included in the allowed roles
-    if (!roles.includes(req.user.role)) {
-      return next(
-        new AppError('You do not have permission to perform this action', 403),
-      );
-    }
-    next(); // Proceed if authorized
-  };
+exports.forgotPassword = catchAsync(async (req, res, next) => {
+  //1)  Get user based on Posted email
+  const user = await User.findOne({ email: req.body.email });
+  //we used findOne since user and we do not know his id, we only know his emailID, so we are trying to find him with his email.
+  if (!user) {
+    return next(new AppError('There is no user with email address ', 404));
+  }
+
+  //2) Generate  the random token
+  const resetToken = user.createPasswordResetToken();
+  await user.save({ validateBeforeSave: false });
+
+  //3)Send it to user's email
+});
+
+exports.resetPassword = (req, res, next) => {};
+```
+
+```js
+userSchema.methods.createPasswordResetToken = function () {
+  // Generate a random token
+  const resetToken = crypto.randomBytes(32).toString('hex'); //we should not directly store this token in DB.
+  // Hash the token and store it in the database
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  console.log({ resetToken }, this.passwordResetToken);
+  // Set token expiration time (10 minutes)
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; //we want the token to be expire in 10 mns: in millie seconds
+
+  // Return the raw token (to be sent to the user)
+  return resetToken;
 };
 ```
-
----
-
-### **Step 3: Update the Route**
-
-Integrate the middleware into the route to restrict specific actions.
-
-```jsx
-router
-  .route('/:id')
-  .get(tourController.getTour) // Public access
-  .patch(tourController.updateTour) // Restricted to certain roles
-  .delete(
-    authController.protect, // Ensure the user is authenticated
-    authController.restrictTo('admin', 'lead-guide'), // Restrict to specific roles
-    tourController.deleteTour, // Controller for deleting the tour
-  );
-```
-
----
-
-### **Key Points**
-
-- **Role Management:** Use the `enum` type to define allowed roles in the database schema.
-- **Middleware Logic:** Use `rest parameter syntax` to pass allowed roles dynamically.
-- **Authorization in Routes:** Chain middleware functions for authentication (`protect`) and role-based authorization (`restrictTo`).

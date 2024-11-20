@@ -1,3 +1,4 @@
+const crypto = require('crypto'); // build in node package, no need to install.
 const mongoose = require('mongoose');
 const validator = require('validator'); //3rd party validator
 const bcrypt = require('bcryptjs');
@@ -42,6 +43,8 @@ const userSchema = new mongoose.Schema({
     },
   },
   passwordChangedAt: Date,
+  passwordResetToken: String,
+  passwordResetExpires: Date,
 });
 
 userSchema.pre('save', async function (next) {
@@ -76,6 +79,25 @@ userSchema.methods.changedPasswordAfter = function (JWTTimestamp) {
   }
   //False means NOt changed
   return false;
+};
+
+// Generate a random token
+//instance method
+userSchema.methods.createPasswordResetToken = function () {
+  // Generate a random token
+  const resetToken = crypto.randomBytes(32).toString('hex'); //we should not directly store this token in DB.
+  // Hash the token and store it in the database
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+
+  console.log({ resetToken }, this.passwordResetToken);
+  // Set token expiration time (10 minutes)
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; //we want the token to be expire in 10 mns: in millie seconds
+
+  // Return the raw token (to be sent to the user)
+  return resetToken;
 };
 
 const User = mongoose.model('User', userSchema);
