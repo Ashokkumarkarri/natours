@@ -8,7 +8,8 @@ router.post('/signup', authController.signup);
 router.post('/login', authController.login);
 
 router.post('/forgotPassword', authController.forgotPassword); //only receives email address.
-router.post('/resetPassword', authController.resetPassword); //receives token and the  new password.
+router.patch('/resetPassword/:token', authController.resetPassword); //receives token and the  new password.
+// we are trying to update the password here, so it should a patch request.
 
 router
   .route('/')
