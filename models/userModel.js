@@ -60,6 +60,18 @@ userSchema.pre('save', async function (next) {
   this.passwordConfirm = undefined;
   next();
 });
+
+// Update changedPasswordAt property for the user when he changes the password.
+userSchema.pre('save', function (next) {
+  //the changedPasswordAt value should set only when user changed his password.
+  // changedPasswordAt value should not be changed: when user created the document for the first time.
+  if (!this.isModified('password') || this.isNew) {
+    return next();
+  }
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
 //instance method, a method which will be available in every file.
 userSchema.methods.correctPassword = async function (
   candidatePassword,
