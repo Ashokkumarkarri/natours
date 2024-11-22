@@ -1,113 +1,105 @@
 ## 014 Password Reset Functionality\_ Setting New Password
 
-`1. Get the user based on the token.`
+`1. Get user from collection.`
 
-`2. if token has not expired, and there is user, set the new password.`
+`2. Check if posted password is correct.`
 
-`3. Update changedPasswordAt property for the user.`
+`3. If so, update the password.`
 
-`4. Log the user in, send JWT to client.`
+`4. Log user in, send JWT.`
+
+---
+
+`Note:`
+
+- We allow users to update their passwords without using the "forgot password" option.
+  However, a user can only change their password while logged in.
+- For instance, if a user leaves their computer unattended, someone else could potentially change their password.
+- To prevent this, we always require the user to provide their current password before allowing them to set a new one.
+
+---
+
+## Simple Notes for updatePassword Function
+
+1. Fetch the User:
+   Find the user by their id and include the password field using .select('+password').
+   Verify Current Password:
+
+2. Check if the provided passwordCurrent matches the user's existing password using correctPassword.
+   Update Password:
+
+3. If the current password is correct, update password and passwordConfirm.
+   Save the changes using .save() (important for validation and middleware).
+   Send JWT:
+
+Log the user in again by sending a new JWT after the password is updated.
+
+---
+
+---
+
+### Detailed Notes for `updatePassword` Function
+
+1. **Purpose:**This function updates the logged-in user's password securely by validating the current password and then saving the new password.
+
+2. **Steps:**
+
+   ### a. **Get the User from the Database:**
+
+   - Use `User.findById(req.user.id)` to fetch the user based on their `id` (available from the logged-in user's JWT).
+   - Use `.select('+password')` to explicitly include the `password` field, as it's typically excluded in query results due to the schema configuration.
+
+   ### b. **Verify the Current Password:**
+
+   - Check if the `passwordCurrent` provided in the request body matches the stored password.
+   - Use the `correctPassword` method defined in the `User` model for this comparison.
+   - If the passwords do not match, throw an error using `next(new AppError(...))` with a status code of `401` (Unauthorized).
+
+   ### c. **Update the Password:**
+
+   - Assign the new password (`req.body.password`) and password confirmation (`req.body.passwordConfirm`) to the user object.
+   - Use `user.save()` to save the updated user in the database.
+     - _Important:_ Use `save()` instead of `findByIdAndUpdate()` to ensure the pre-save hooks and validators (e.g., hashing the password) are executed.
+
+   ### d. **Send a New JWT to Log In the User:**
+
+   - Call `createSendToken(user, 200, res)` to:
+     1. Generate a new JSON Web Token (JWT) for the updated user.
+     2. Send the token along with a response confirming the password update.
+
+---
+
+1. **Key Notes:**
+   - The `correctPassword` method checks the encrypted password. Ensure this method is implemented correctly in the `User` model.
+   - `password` and `passwordConfirm` fields must match for the save operation to succeed. This is validated by the Mongoose schema.
+   - Always use `next(new AppError(...))` for handling errors gracefully in middleware.
 
 ```js
-exports.resetPassword = async (req, res, next) => {
-  //1)Get the user based on the token.
-  const hashedToken = crypto
-    .createHash('sha256')
-    .update(req.params.token)
-    .digest('hex');
+exports.updatePassword = catchAsync(async (req, res, next) => {
+  //1)Get user from collection
+  const user = await User.findById(req.user.id).select('+password');
 
-  const user = await User.findOne({
-    passwordResetToken: hashedToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-
-  //2) if token has not expired, and there is user, set the new password
-  if (!user) {
-    return next(new AppError('Token is invalid or has expired', 400));
+  //2)Check if posted password is correct.
+  if (!(await user.correctPassword(req.body.passwordCurrent, user.password))) {
+    return next(new AppError('Your current password is wrong.', 401));
   }
+
+  //3)If so, update the password.
   user.password = req.body.password;
   user.passwordConfirm = req.body.passwordConfirm;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
   await user.save();
-  //3) Update changedPasswordAt property for the user.
+  //user.findByIdAndUpdate method will not work as intended.
 
-  //4)Log the user in, send JWT to client.
-  const token = signToken(user._id);
-  res.status(200).json({
-    status: 'success',
-    token,
-  });
-};
+  //4)Log user in, send JWT
+
+  createSendToken(user, 200, res);
+});
 ```
 
----
-
-1. **Get the user based on the token**
-   - Hash the token from the URL to match the one stored in the database.
-   - Search for a user with the hashed token and check if the token has not expired (`passwordResetExpires > Date.now()`).
-2. **Check token validity and set a new password**
-   - If no user is found or the token has expired, send an error.
-   - Otherwise, update the user's password (`password` and `passwordConfirm` fields).
-   - Remove the reset token and its expiration time from the database.
-3. **Update the `changedPasswordAt` property**
-   - Automatically update the `passwordChangedAt` timestamp when the user changes their password.
-   - Ensure this update happens during password modification only.
-4. **Log the user in and send a new JWT**
-   - Generate a new JWT token for the user using their ID.
-   - Respond with a success message and the new token.
-
-### Example Logic Flow:
-
-1. Verify the reset token's authenticity and expiration.
-2. If valid, save the new password.
-3. Update `passwordChangedAt` so old tokens can't be reused.
-4. Generate and return a fresh login token (JWT).
-
----
-
-## code
-
-- **Get the user based on the token**
-  - Hash the token and find the user in the database.
-  ```jsx
-  const hashedToken = crypto
-    .createHash('sha256')
-    .update(req.params.token)
-    .digest('hex');
-  const user = await User.findOne({
-    passwordResetToken: hashedToken,
-    passwordResetExpires: { $gt: Date.now() },
-  });
-  ```
-- **Check token validity and set a new password**
-  - If no user is found or the token is expired, return an error.
-  - Otherwise, update the password and clear the reset token fields.
-  ```jsx
-  if (!user) {
-    return next(new AppError('Token is invalid or has expired', 400));
-  }
-  user.password = req.body.password;
-  user.passwordConfirm = req.body.passwordConfirm;
-  user.passwordResetToken = undefined;
-  user.passwordResetExpires = undefined;
-  await user.save();
-  ```
-- **Update the `changedPasswordAt` property**
-  - Automatically set `passwordChangedAt` when the password is updated.
-  ```jsx
-  userSchema.pre('save', function (next) {
-    if (!this.isModified('password') || this.isNew) return next();
-    this.passwordChangedAt = Date.now() - 1000;
-    next();
-  });
-  ```
-- **Log the user in and send a new JWT**
-  - Create a new JWT and send it to the client.
-  ```jsx
-  const token = signToken(user._id);
-  res.status(200).json({
-    status: 'success',
-    token,
-  });
-  ```
+```js
+router.patch(
+  '/updateMyPassword',
+  authController.protect,
+  authController.updatePassword,
+);
+```

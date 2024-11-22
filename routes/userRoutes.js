@@ -10,7 +10,11 @@ router.post('/login', authController.login);
 router.post('/forgotPassword', authController.forgotPassword); //only receives email address.
 router.patch('/resetPassword/:token', authController.resetPassword); //receives token and the  new password.
 // we are trying to update the password here, so it should a patch request.
-
+router.patch(
+  '/updateMyPassword',
+  authController.protect,
+  authController.updatePassword,
+);
 router
   .route('/')
   .get(userController.getAllUsers)
