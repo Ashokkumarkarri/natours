@@ -94,7 +94,7 @@ const tourSchema = new mongoose.Schema(
 tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7;
 });
-//we can not use the virtual properties while querying, since they are not part of quering. They are part of mongoDB.
+//we can not use the virtual properties while querying, since they are not part of querying. They are part of mongoDB.
 
 //4 type of middlewares are there in mongoose: 1.document, 2.query, 3.aggregate, 4.model middleware.
 //Document Middleware: runs before  .save() and .create()
@@ -157,6 +157,6 @@ tourSchema.pre('aggregate', function (next) {
 
 const Tour = mongoose.model('Tour', tourSchema);
 //name of the model  , schema
-//allways use upper case ofr model names and varible.
-// thats why I had used Captial T for the varible so that we will get to know that we are dealing with mode.
+//always use upper case ofr model names and variable.
+// thats why I had used Capital T for the variable so that we will get to know that we are dealing with mode.
 module.exports = Tour;
