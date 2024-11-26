@@ -78,7 +78,7 @@ userSchema.pre('save', function (next) {
 });
 
 userSchema.pre(/^find/, function (next) {
-  // "/^find/" we will use regular express to implement to logic that: this query middlware should work for all the methods that start with "find".
+  // "/^find/" we will use regular express to implement to logic that: this query middleware should work for all the methods that start with "find".
   //this points to current query
   this.find({ active: { $ne: false } });
   next();

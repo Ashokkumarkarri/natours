@@ -1,102 +1,73 @@
-### Notes for User Deletion Process (Soft Delete)
+## 019 Sending JWT via Cookie
 
-1. **Soft Deleting User Accounts**:
-   - Instead of permanently deleting a user from the database, we implement a _soft delete_ by setting the `active` field to `false`.
-   - This allows the user to reactivate their account in the future if needed.
-2. **Behavior of the `active` Field**:
+### **Cookies**
 
-   - The `active` field is of type `Boolean` and is set to `true` by default when a user account is created.
-   - This property is **hidden** from public responses (e.g., it won't appear in Postman or API responses) using `select: false` in the schema.
+- **Definition**: A small piece of text sent by the server to the client.
+- **Purpose**: Helps store data like session identifiers, user preferences, or tokens for authentication.
+- **Behavior**:
+  - When the server sends cookies, the browser stores them automatically.
+  - In future requests, the browser sends cookies back to the server.
 
-   ```jsx
-   active: {
-     type: Boolean,
-     default: true,
-     select: false,
-   }
-   ```
+---
 
-3. **Route to Delete User**:
+### **Cross-Site Scripting (XSS) Attack**
 
-   - The user can soft-delete their account by hitting the `/deleteMe` route.
-   - The `authController.protect` middleware ensures the user is authenticated before proceeding.
-   - The account's `active` field is updated to `false` when the route is accessed.
+- **Definition**: A security vulnerability where attackers inject malicious scripts (usually JavaScript) into trusted websites.
+- **Impact**:
+  - Can steal cookies, session data, or other sensitive information.
+  - Can hijack user accounts or redirect users to malicious sites.
 
-   ```jsx
-   router.delete('/deleteMe', authController.protect, userController.deleteMe);
-   ```
+---
 
-4. **`deleteMe` Controller Logic**:
+### **Cookie Security Options**
 
-   - The `deleteMe` function sets the `active` field of the authenticated user to `false`.
-   - Although the `active` status is updated in the database, we don't expose this change to the user in the API response.
-   - A `204 No Content` response is sent as a best practice to confirm the operation.
+1. **`secure: true`**
+   - Ensures cookies are sent only over HTTPS connections.
+   - Protects against interception of cookies in plaintext HTTP.
+2. **`httpOnly: true`**
+   - Prevents client-side JavaScript from accessing or modifying cookies.
+   - Protects against cross-site scripting (XSS) attacks.
 
-   ```jsx
-   exports.deleteMe = catchAsync(async (req, res, next) => {
-     await User.findByIdAndUpdate(req.user.id, { active: false });
+---
 
-     res.status(204).json({
-       status: 'success',
-       data: null,
-     });
-   });
-   ```
+### **JWT_COOKIE_EXPIRES_IN**
 
-5. **Hiding Inactive Users in API Responses**:
+- **Definition**: Specifies the lifespan of a JWT (JSON Web Token) stored in a cookie.
+- **Example Value**: `JWT_COOKIE_EXPIRES_IN=90` (90 days).
 
-   - Inactive users (where `active` is `false`) are excluded from all `GET` requests using query middleware.
-   - This ensures that only active users are displayed when querying the database, such as with a "Get All Users" API.
+---
 
-   ```jsx
-   userSchema.pre(/^find/, function (next) {
-     // Only find documents where active is true
-     this.find({ active: { $ne: false } });
-     next();
-   });
-   ```
+## code
 
-6. **Query Middleware (`pre` Hook)**:
-   - The `pre` hook runs before any `find` query (e.g., `find`, `findOne`, `findById`).
-   - It filters out inactive users by adding a condition to the query to exclude users with `active: false`.
-7. **Final Flow**:
-   - When a user logs in and deletes their account:
-     - Their `active` field is set to `false`.
-     - The field remains hidden from responses (e.g., Postman or user API data).
-   - Inactive users are automatically excluded from being shown in "Get All Users" queries or any other queries.
+```jsx
+//function to send responses
+const createSendToken = (user, statusCode, res) => {
+  const token = signToken(user._id);
+  // Set cookie options
+  const cookieOptions = {
+    // Expiration for the cookie
+    maxage: new Date(
+      Date.now() +
+        Number(process.env.JWT_COOKIE_EXPIRES_IN) * 24 * 60 * 60 * 1000,
+    ),
+    // secure: true, //https
+    httpOnly: true, // Prevents client-side scripts from accessing cookies (XSS protection)
+  };
+  // Only send cookies securely in production (HTTPS)
+  //arg1=name of the cookie, arg2=data we want to send, aeg3=some options
+  if (process.env.NODE_ENV === 'production') {
+    cookieOptions.secure = true; // Send cookies only over HTTPS
+  }
+  // Send the cookie to the client
+  res.cookie('jwt', token, cookieOptions);
 
-This design ensures:
+  // Remove the password before sending the user data in the response
+  user.password = undefined;
 
-- Users can deactivate their accounts securely.
-- Inactive accounts are hidden from public access.
-- Reactivating an account in the future is possible without creating a new one.
-
-## code :
-
-```js
-//controller logic
-exports.deleteMe = catchAsync(async (req, res, next) => {
-  await User.findByIdAndUpdate(req.user.id, { active: false });
-  //in postman we do not see this status code. but even tough it's best practice to send a response.
-
-  res.status(204).json({
+  res.status(statusCode).json({
     status: 'success',
-    data: null,
+    token,
+    data: { user: user },
   });
-});
-```
-
-```js
-//route
-router.delete('/deleteMe', authController.protect, userController.deleteMe);
-```
-
-```js
-//userSchema
-  active: {
-    type: Boolean,
-    default: true,
-    select: false,
-  },
-
+};
 ```

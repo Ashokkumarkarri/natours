@@ -24,6 +24,7 @@ const port = process.env.PORT || 8000;
 const server = app.listen(port, () => {
   console.log(`App running on ${port}....`);
 });
+console.log(`running on ${process.env.NODE_ENV} Environment `);
 
 //globally handling unhandled rejection.
 process.on('unhandledRejection', (err) => {
