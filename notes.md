@@ -1,73 +1,80 @@
-### **Detailed Notes: Data Sanitization in Express**
+**What is Parameter Pollution?**
 
-**What is Data Sanitization?**
-
-- The process of **cleaning user input** to remove malicious or harmful data.
-- Protects the app from potential attacks, such as unauthorized database operations or running harmful JavaScript code.
-
----
-
-### **Why is Data Sanitization Important?**
-
-1. **Prevent NoSQL Query Injection**:
-   - Attackers can inject malicious NoSQL queries into your database.
-   - For example, sending `{"$gt": ""}` in user input could allow them to read or delete sensitive data.
-2. **Prevent Cross-Site Scripting (XSS) Attacks**:
-   - Attackers can send malicious JavaScript in the request body or parameters.
-   - If executed, this script can steal sensitive data, manipulate your app, or harm your server.
-
----
-
-### **Packages for Data Sanitization**
-
-### 1. **`express-mongo-sanitize`**
-
-- **Purpose**: Prevents NoSQL query injection by removing `$` and `.` from user input (commonly used in NoSQL attacks).
-- **Installation**:
+- **Parameter pollution** happens when a user sends duplicate query parameters in the URL.Example:In such cases:
   ```bash
-  npm install express-mongo-sanitize
+  /api/v1/tours?price=100&price=200
   ```
-- **How to Use**:
-
-  ```jsx
-  const mongoSanitize = require('express-mongo-sanitize');
-
-  // Middleware to sanitize data
-  app.use(mongoSanitize());
-  ```
-
-- **Example**:Input like `{"username": {"$gt": ""}}` is sanitized to prevent malicious queries.
-
-### 2. **`xss-clean`**
-
-- **Purpose**: Cleans user input to prevent XSS attacks by stripping malicious JavaScript from input fields.
-- **Installation**:
-  ```bash
-  npm install xss-clean
-  ```
-- **How to Use**:
-
-  ```jsx
-  const xss = require('xss-clean');
-
-  // Middleware to clean user input
-  app.use(xss());
-  ```
-
-- **Example**:Input like `<script>alert('XSS')</script>` is sanitized to remove harmful code.
+  - The server might use the first value, the last value, or both, leading to **unexpected behavior** or **security issues**.
 
 ---
 
-### **Implementation in Express**
+### **Why Prevent Parameter Pollution?**
 
-Add both middlewares to your app for comprehensive sanitization:
+1. **Avoid Ambiguity**: Prevents the app from being confused by multiple conflicting parameter values.
+2. **Enhance Security**: Protects the app from attacks where malicious users exploit duplicate parameters.
+3. **Ensure Data Integrity**: Ensures clean and reliable query parameters for consistent processing.
+
+---
+
+### **Using `hpp` to Prevent Parameter Pollution**
+
+1. **Install the `hpp` Package**:
+
+   ```bash
+   npm install hpp
+   ```
+
+2. **Add `hpp` Middleware**:
+
+   ```jsx
+   const hpp = require('hpp');
+
+   app.use(
+     hpp({
+       whitelist: [
+         'duration', // Parameters allowed to have duplicates
+         'ratingsQuantity',
+         'ratingsAverage',
+         'maxGroupSize',
+         'difficulty',
+         'price',
+       ],
+     }),
+   );
+   ```
+
+3. **What `hpp` Does**:
+   - Removes duplicate query parameters by keeping only the **last value**.
+   - For example:`/api/v1/tours?price=100&price=200` → `price=200`
+   - **Whitelist**: Allows specified parameters to accept duplicates if needed (e.g., `price=100&price=200` might be valid for filtering).
 
 ---
 
 ### **Summary**
 
-1. **`express-mongo-sanitize`**: Protects against NoSQL injection by sanitizing dangerous characters (`$`, `.`) in input.
-2. **`xss-clean`**: Protects against XSS attacks by cleaning harmful JavaScript from user input.
-3. **Why Use Them?**:
-   - Prevent attackers from deleting or reading sensitive data from your database.
-   - Avoid malicious JavaScript from running in your app or on your users' browsers.
+1. **`hpp`**: A middleware to prevent HTTP parameter pollution.
+2. **Install**:
+
+   ```bash
+   npm install hpp
+   ```
+
+3. **Usage**: Add `hpp` to your app to clean up query parameters and whitelist acceptable duplicates.
+4. **Why Use It?**:
+   - Prevents attacks and ambiguity caused by duplicate query parameters.
+   - Ensures clean, secure, and predictable parameters in your Express app.
+
+---
+
+**Quick Code**:
+
+```jsx
+const hpp = require('hpp');
+
+// Prevent param pollution
+app.use(
+  hpp({
+    whitelist: ['duration', 'ratingsQuantity', 'price'], // Allow duplicates for these
+  }),
+);
+```
