@@ -1,139 +1,125 @@
-### 004 Modelling Locations (Geospatial Data)
+# 005 Modelling Tour Guides\_ Embedding
 
-### 1. **What is Geospatial Data?**
+`Note:`
+As discussed above, we can either embed or reference our tour guides in our tour documents.
+Although embedding our tour guides won’t be our final strategy, we’ll try it out for the sake of example.
 
-- Geospatial data is information that represents **locations, lines, and shapes** on Earth using **longitude and latitude coordinates**.
-- This data can describe:
-  - **Points**: Specific locations (e.g., a tour start point).
-  - **Lines**: Paths or routes (e.g., a hiking trail).
-  - **Polygons**: Areas or boundaries (e.g., a park).
+---
 
-### 2. **MongoDB's Support for Geospatial Data**
+### 1. **Overview**
 
-- MongoDB **natively supports geospatial data**, making it easier to store and query geographical locations.
-- Geospatial data is represented using **GeoJSON** (Geographical JSON format), which is a widely accepted standard.
+In MongoDB, we can associate tour guides with a tour document in two ways:
 
-### 3. **Using Geospatial Data in a Schema**
+- **Embedding**: Storing the entire user (guide) data directly within the tour document.
+- **Referencing**: Storing only the IDs of the user (guides) and fetching their details as needed.
 
-- To include geospatial data in your MongoDB documents, you need to define fields that follow the **GeoJSON specification**.
-- **Example Schema** for a tour application:
+Although embedding will not be our final approach, it is useful to explore its implementation for better understanding.
 
-### **Start Location**
+---
 
-This represents the **starting point** of the tour:
+### 2. **Embedding Tour Guides**
 
-```jsx
-startLocation: {
-  type: {
-    type: String,          // Mandatory field to define the geometry type
-    default: 'Point',      // Default is 'Point' for single locations
-    enum: ['Point'],       // Only 'Point' is allowed
-  },
-  coordinates: [Number],   // Array of numbers [longitude, latitude]
-  address: String,         // Custom field for the address of the location
-  description: String,     // Custom field to describe the location
-}
-```
+#### **What is Embedding?**
 
-- **Key Fields Explained**:
-  - `type`: A string that specifies the type of geometry.
-    - Allowed values: `'Point'`, `'LineString'`, `'Polygon'`.
-    - Default: `'Point'`.
-  - `coordinates`: An array of two numbers representing `[longitude, latitude]`.
-  - `address`: Optional field to store the address.
-  - `description`: Optional field to add details about the location.
+- **Embedding** involves directly including the **user (guide) data** within the tour document.
+- This approach is simple and reduces the need for additional queries when accessing tour data.
 
-### **Other Locations (Stops During the Tour)**
+---
 
-An array is used to represent multiple locations (e.g., stops during the tour):
+### 3. **Adding Guides to the Tour Schema**
+
+- Add a `guides` field to the schema, which is an **array of user IDs**.
 
 ```jsx
-locations: [
-  {
-    type: {
-      type: String,
-      default: 'Point', // Single points for each stop
-      enum: ['Point'], // Only 'Point' is allowed
-    },
-    coordinates: [Number], // [longitude, latitude]
-    address: String, // Address of the stop
-    description: String, // Description of the stop
-    day: Number, // Day of the tour for this location
-  },
-];
+guides: [String], // Array of User IDs
 ```
 
-- **Key Difference from `startLocation`**:
-  - The `locations` field is an **array of objects** to represent multiple stops.
-  - Each object has an additional field, `day`, which indicates the day of the tour for that stop.
+---
 
-### 4. **Understanding GeoJSON**
+### 4. **Creating a New Tour with Guides**
 
-GeoJSON requires specific properties for storing geospatial data:
-
-1. **type**:
-   - Indicates the type of geometry.
-   - Common types:
-     - `'Point'`: Single location.
-     - `'LineString'`: A path with multiple coordinates.
-     - `'Polygon'`: A boundary defined by multiple coordinates.
-2. **coordinates**:
-   - An array of `[longitude, latitude]` values.
-   - Example for a point: `[77.209, 28.6139]` (Longitude, Latitude of Delhi, India).
-
-### 5. **Why Use Arrays for Locations?**
-
-- Arrays allow embedding **multiple location objects** within a document.
-- Each object in the array can have:
-  - A specific `type` and `coordinates`.
-  - Custom fields like `address`, `description`, and `day`.
-
-This structure helps in storing and querying detailed data for each stop.
-
-### 6. **Key Points to Remember**
-
-- MongoDB supports **geospatial data out of the box**.
-- Geospatial data is used to represent **locations, routes, and areas**.
-- **GeoJSON Requirements**:
-  - `type`: Specifies the geometry type (e.g., `'Point'`).
-  - `coordinates`: Specifies `[longitude, latitude]`.
-- **Additional Fields**:
-  - You can add custom fields like `address`, `description`, and `day` for enhanced functionality.
-
-### 7. **Practical Example of a Document**
+- When creating a new tour, pass an array of user IDs for the guides:
 
 ```json
 {
-  "name": "Amazing Tour",
-  "startLocation": {
-    "type": "Point",
-    "coordinates": [77.209, 28.6139],
-    "address": "Delhi, India",
-    "description": "Starting point of the tour"
-  },
-  "locations": [
-    {
-      "type": "Point",
-      "coordinates": [77.412, 28.686],
-      "address": "Stop 1",
-      "description": "First stop of the tour",
-      "day": 1
-    },
-    {
-      "type": "Point",
-      "coordinates": [78.032, 27.175],
-      "address": "Taj Mahal, Agra",
-      "description": "Second stop of the tour",
-      "day": 2
-    }
-  ]
+  "name": "A New Tour",
+  "duration": 365,
+  "maxGroupSize": 15,
+  "difficulty": "medium",
+  "price": 1497,
+  "priceDiscount": 200,
+  "summary": "Test tour rofl",
+  "imageCover": "tour-5-cover.jpg",
+  "ratingsAverage": 5,
+  "guides": ["5dd5cfb6a734415b3e2339d3", "5dd59a35f4ac7907596ef89a"]
 }
 ```
 
-### 8. **Advantages of Using Geospatial Data in MongoDB**
+---
 
-- Simplifies **location-based queries** (e.g., finding nearby places).
-- Enables **complex geospatial operations** like calculating distances and intersections.
-- Provides **native support** for geospatial indexes and queries.
+### 5. **Populating User Data in the Tour Document**
 
-With this setup, you can effectively use MongoDB for applications that require geospatial functionality, such as maps, travel apps, and logistics systems.
+- To embed the full guide details into the tour, we use **middleware** to fetch user data from the database based on their IDs.
+
+### **Pre-Save Middleware**
+
+- The `pre-save` middleware is triggered before the document is saved to the database.
+- Steps:
+  1. Use `map()` to loop over each guide ID and fetch the user document with `User.findById(id)`.
+  2. Mark the `map()` callback as `async` to handle asynchronous operations.
+  3. Use `Promise.all()` to wait for all the promises to resolve before proceeding.
+  4. Replace the `guides` field with the fetched user data.
+
+```jsx
+// Middleware to fetch and embed guide data
+tourSchema.pre('save', async function (next) {
+  const guidesPromises = this.guides.map(async (id) => await User.findById(id)); // Array of promises
+  this.guides = await Promise.all(guidesPromises); // Resolve all promises
+  next(); // Call the next middleware
+});
+```
+
+---
+
+### 6. **Key Concepts Explained**
+
+- **Async Map**:
+  - `map()` creates an array of promises by calling `User.findById(id)` for each guide ID.
+  - Example:Result: `[Promise, Promise]`
+    ```jsx
+    ['id1', 'id2'].map(async (id) => await User.findById(id));
+    ```
+- **Promise.all()**:
+  - Waits for all promises in the array to resolve.
+  - Converts `[Promise, Promise]` into an array of resolved values: `[User1, User2]`.
+- **Pre-Save Middleware**:
+  - Ensures the `guides` field is populated with user data before the document is saved.
+
+---
+
+### 7. **Limitations**
+
+- The `pre-save` middleware only works when **creating new documents** or saving an existing document.
+- This approach increases the size of the tour document as it includes full guide details.
+
+---
+
+### 8. **Advantages of Embedding**
+
+- Eliminates the need for additional queries to fetch guide data.
+- Simplifies data retrieval for read operations.
+
+---
+
+### 9. **When to Use Embedding**
+
+- When the related data (e.g., guides) is relatively small and does not change frequently.
+- Example: If each tour has only a few guides and their information rarely updates.
+
+---
+
+### 10. **Conclusion**
+
+Embedding is a useful approach for associating related data with a document.
+The `pre-save` middleware ensures that the `guides` field is populated with complete user details before saving the tour document. However, this strategy may not be ideal for scenarios where the related data is large or frequently updated.
+In such cases, referencing may be a better alternative.
