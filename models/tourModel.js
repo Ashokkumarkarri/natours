@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const slugify = require('slugify');
 const validator = require('validator'); //3rd party validator
-const User = require('./userModel');
+// const User = require('./userModel');
 const tourSchema = new mongoose.Schema(
   {
     name: {
@@ -110,7 +110,12 @@ const tourSchema = new mongoose.Schema(
         day: Number, // Day of the tour for this location
       },
     ],
-    guides: Array,
+    guides: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'User',
+      },
+    ],
   },
   { toJSON: { virtuals: true }, toObject: { virtuals: true } },
 );
@@ -129,13 +134,13 @@ tourSchema.pre('save', function (next) {
   next();
 });
 
-// Middleware to fetch and embed guide data
-//will only work creating new documents
-tourSchema.pre('save', async function (next) {
-  const guidesPromises = this.guides.map(async (id) => await User.findById(id)); //array full of promises
-  this.guides = await Promise.all(guidesPromises);
-  next();
-});
+// // Middleware to fetch and embed guide data
+// //will only work creating new documents
+// tourSchema.pre('save', async function (next) {
+//   const guidesPromises = this.guides.map(async (id) => await User.findById(id)); //array full of promises
+//   this.guides = await Promise.all(guidesPromises);
+//   next();
+// });
 
 //we can have multiple pre save, post hooks.
 //hook is a another terminology for middleware.
