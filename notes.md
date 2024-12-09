@@ -1,67 +1,112 @@
-## 006 Modelling Tour Guides\_ Child Referencing
+# 007 Populating Tour Guides
+
+In the previous video, we used child referencing to reference the user documents
+
+In this video, we will replace the user IDs with the original documents using **populating**.
+
+The `.populate()` method always happens in a query.
+
+**Populate = fill up the data.**
 
 ---
 
-### **1. What is Child Referencing?**
+### **Examples**
 
-- **Definition**: Child referencing involves storing the `ObjectId`s of related documents in a parent document.
-- **Key Advantage**: Avoids data duplication while allowing flexibility in querying related data.
+1. **Passing a String**
+
+   ```jsx
+   const tour = await Tour.findById(req.params.id).populate('guides');
+   // .populate('name of the field that we want to populate')
+   ```
+
+   - Instead of passing a string, we can pass options as an object.
+
+2. **Passing an Object**
+
+   ```jsx
+   const tour = await Tour.findById(req.params.id).populate({
+     path: 'guides', // name of the field that we want to replace
+     select: '-__v -passwordChangedAt', // fields that we want to hide
+   });
+   ```
 
 ---
 
-### **2. Implementing Child Referencing in Mongoose**
+### **What is `.populate()`?**
 
-- To set up child referencing, update the schema as follows:
+`.populate()` is a fundamental tool in Mongoose when working with data.
+
+It helps us replace the referenced IDs in a document with the actual data from the referenced collection.
+
+In the background, `.populate()` performs a separate query to fetch the data from the referenced document.
+
+This is why Mongoose can fill up the data for the specified field.
+
+---
+
+### **When to Use `.populate()`?**
+
+1. **Small Applications:**
+
+   It is fine to use `.populate()` for small applications where the number of queries is limited.
+
+2. **Big Applications:**
+
+   Be careful when using `.populate()` in large applications because performing multiple queries can affect performance.
+
+---
+
+### **Pre Middleware to Automate `.populate()`**
+
+We can set up a pre middleware so that `.populate()` runs automatically whenever there is a query:
 
 ```jsx
-guides: [
-  {
-    type: mongoose.Schema.ObjectId, // Store ObjectId of the referenced documet.
-    ref: 'User',                   // Link to the 'User' model.
-  },
-],
+tourSchema.pre(/^find/, function (next) {
+  // In pre middleware, `this` refers to the current query
+  this.populate({
+    path: 'guides', // name of the field that we want to replace
+    select: '-__v -passwordChangedAt', // fields to hide
+  });
+  next();
+});
 ```
 
-- **No Middleware Required**: Unlike embedding, you don’t need to use pre-save middleware to fetch related documents.
+- This middleware will automatically populate the `guides` field for every query starting with `find`.
 
 ---
 
-### **3. How to Use**
+### **Steps to Use `.populate()`**
 
-1. **POST Request**:
+1. **Create a Reference:**
 
-   - Provide an array of `ObjectId`s for the `guides` field when creating or updating a tour document.
+   Define a field in your schema to reference another model:
 
-   ```json
-   {
-     "name": "Adventure Tour",
-     "guides": ["64a7f9b9c1e6df001c3e9876", "64a7f9b9c1e6df001c3e9877"]
-   }
+   ```jsx
+   guides: [
+     {
+       type: mongoose.Schema.ObjectId,
+       ref: 'User', // this is a reference to another model
+     },
+   ];
    ```
 
-2. **GET Request Response**:
+2. **Populate the Field:**
 
-   - Fetching the tour document will return the `guides` field containing the `ObjectId`s:
+   Use `.populate()` in your query to replace the IDs with the actual document data:
 
-   ```json
-   {
-     "name": "Adventure Tour",
-     "guides": ["64a7f9b9c1e6df001c3e9876", "64a7f9b9c1e6df001c3e9877"]
-   }
+   ```jsx
+   const tour = await Tour.findById(req.params.id).populate('guides');
    ```
 
 ---
 
-### **5. Benefits of This Approach**
+### **Key Notes**
 
-- **Simplicity**: No need to manually fetch related data using middleware.
-- **Flexibility**: Retrieve related data only when needed (using `populate()`). (we will see this in next viedo)
-- **Performance**: Reduces the size of the parent document, improving query speed.
+1. `.populate()` = fetch and fill up the data for a referenced field in the document.
+2. It does a query in the background to fetch the data from the referenced collection.
+3. Performance might be affected if `.populate()` is overused, especially in large applications.
 
----
+This is a **2-step process**:
 
-### **6. Summary**
-
-- Use `type: mongoose.Schema.ObjectId` and `ref: 'User'` to establish references.
-- Provide an array of `ObjectId`s in the `guides` field when creating or updating documents.
-- Use `populate()` to retrieve complete details of referenced documents.
+1. **Step 1:** Create a reference to another model (relationship between datasets).
+2. **Step 2:** Populate the referenced field in the query (e.g., `guides`).

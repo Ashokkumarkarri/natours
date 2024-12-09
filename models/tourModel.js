@@ -113,7 +113,7 @@ const tourSchema = new mongoose.Schema(
     guides: [
       {
         type: mongoose.Schema.ObjectId,
-        ref: 'User',
+        ref: 'User', //this is a reference to other model.
       },
     ],
   },
@@ -177,6 +177,15 @@ tourSchema.pre(/^find/, function (next) {
   this.find({ secretTour: { $ne: true } });
   this.start = Date.now();
   //this.start is adding a new property to the query object and storing the current timestamp in it
+  next();
+});
+
+tourSchema.pre(/^find/, function (next) {
+  // In pre middleware, `this` refers to the current query
+  this.populate({
+    path: 'guides', // name of the field that we want to replace
+    select: '-__v -passwordChangedAt', // fields to hide
+  });
   next();
 });
 
