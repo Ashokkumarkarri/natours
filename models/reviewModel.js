@@ -34,5 +34,21 @@ const reviewSchema = new mongoose.Schema(
     toObject: { virtuals: true },
   }, // When we have a virtual property that is not saved in the database but is used for calculations, we need to enable this to include it in the output.
 );
+
+//POPULATE
+//regular expression
+reviewSchema.pre(/^find/, function (next) {
+  // In pre middleware, `this` refers to the current query
+  this.populate({
+    path: 'tour', // name of the field that we want to replace
+    select: 'name',
+  });
+  this.populate({
+    path: 'user', // name of the field that we want to replace
+    select: 'name photo',
+  });
+  next();
+});
+
 const Review = mongoose.model('Review', reviewSchema);
 module.exports = Review;
