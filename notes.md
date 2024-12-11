@@ -1,14 +1,37 @@
-# 008 Modelling Reviews\_ Parent Referencing
+# 009 Creating and Getting Reviews
 
-1. we want to know this review belong to which tour,
-   we are using parent referencing since it's good for larger data.
+##### agenda:
 
-2. we also wanted to know this review belongs to which user.
+1. Implement end point for getting all review's
+2. endpoint for creating A new review
+
+---
+
+##### steps:
+
+1. create a `controller file`, in that `create controller functions`
+2. also create a routes in new route file
+
+end of the day create reviews and get them all.
+
+//we are seeing lot of duplicate code and we will fix it in the next video.
 
 ---
 
-`problem:`
-review know it this belongs to which tour,
-but tour does know it has which review and that we will solve in feature.
+1. need to create a model
+2. reviewController
+3. reviewRoutes
 
 ---
+
+```js
+//in postman
+{
+    "review": "wonderful Tour ",
+    "rating": 5,
+    "tour": "5c88fa8cf4afda39709c2951",
+    "user":"67592ae1122cf2c812145d14" // here iam adding the user manually.
+//but in feature we will add the user id automatically, we will see in feature video.
+  }
+
+```
