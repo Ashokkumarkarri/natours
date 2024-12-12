@@ -126,6 +126,15 @@ tourSchema.virtual('durationWeeks').get(function () {
 });
 //we can not use the virtual properties while querying, since they are not part of querying. They are part of mongoDB.
 
+//VIRTUAL POPULATE
+//name fo the virtual Fields, object of some options
+tourSchema.virtual('reviews', {
+  //name of the field that we want to reference (name of the model)
+  ref: 'Review', //name of the model // ref to the current model
+  foreignField: 'tour', //name of the field in other model(in reviewMOdel we have field called "tour")
+  localField: '_id', //current model, where that id store in the current tour model ()
+});
+
 //4 type of middlewares are there in mongoose: 1.document, 2.query, 3.aggregate, 4.model middleware.
 //Document Middleware: runs before  .save() and .create()
 //we can use save= for .save(), .create()

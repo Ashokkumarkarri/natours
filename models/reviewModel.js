@@ -39,10 +39,15 @@ const reviewSchema = new mongoose.Schema(
 //regular expression
 reviewSchema.pre(/^find/, function (next) {
   // In pre middleware, `this` refers to the current query
-  this.populate({
-    path: 'tour', // name of the field that we want to replace
-    select: 'name',
-  });
+  // this.populate({
+  //   path: 'tour', // name of the field that we want to replace
+  //   select: 'name',
+  // });
+  // this.populate({
+  //   path: 'user', // name of the field that we want to replace
+  //   select: 'name photo',
+  // });
+
   this.populate({
     path: 'user', // name of the field that we want to replace
     select: 'name photo',
