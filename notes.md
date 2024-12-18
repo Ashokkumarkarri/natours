@@ -1,112 +1,158 @@
-# 011 Virtual populate Tours & Review's
-
-How to access review's from Tour model.
-let us say we do a query to get a specific tour now how do we get the review for that tour?.
-we have done done parent referencing to reviews.
-reviews pointing to tours
-tours not pointing to the reviews.
-parent does no know who is the child.
-Tour does not know about reviews.
-
-`To solve this we have two solutions:`
-
-1. Manually query the reviews each time when we query the tours.
-2. Also do child referencing on the tours,
-   keep an array of all the reviews Id's on each tour documents, then populate the array.
-   but we do not want to store the array ID's which might grow indifinitly, that's why we pic parent referencing at the first place.
-
-   ```js
-   //child referencing
-   //but we do not want to do it, since it might gro infinitely
-   reviews: [{ type: mongoose.Schema.ObjectId, ref: 'Review' }];
-   ```
-
-##### To solve the problem we have "Virtual Population "
+# 012 Implementing Simple Nested Routes
 
 ```js
-//VIRTUAL POPULATE
-//name fo the virtual Fields, object of some options
-tourSchema.virtual('reviews', {
-  //name of the field that we want to reference (name of the model)
-  ref: 'Review', //name of the model // ref to the current model
-  foreignField: 'tour', //name of the field in other model(in reviewMOdel we have field called "tour")
-  localField: '_id', //current model, where that id store in the current tour model ()
-});
+// Nested Routes for Reviews:
+// Example endpoints:
+// 1. POST /tours/:tourId/reviews --> To create a new review for a specific tour
+// 2. GET /tours/:tourId/reviews --> To get all reviews for a specific tour
+// 3. GET /tours/:tourId/reviews/:reviewId --> To get a specific review for a tour
+
+// Note:
+// - This nested route structure is useful to represent the parent-child relationship
+//   between resources (e.g., `tours` as the parent and `reviews` as the child).
+// - The `tourId` is extracted from the URL, and the `userId` will be determined
+//   from the currently logged-in user (via authentication middleware).
+
+// Route for handling all reviews related to a specific tour
+router.route('/:tourId/reviews').post(
+  // Middleware to protect this route - only authenticated users can access it
+  authController.protect,
+
+  // Restrict access to certain roles (e.g., only users can create reviews)
+  authController.restrictTo('user'),
+
+  // Controller to handle the creation of a new review
+  reviewController.createReview,
+);
+
+// Note for Future Improvement:
+// - Currently, we are handling the reviews-related logic inside `tourRoutes`
+//   because the URL starts with `/tours`. This is temporary.
+// - In the future, we can refactor and move the review-related logic to a separate
+//   `reviewRoutes` file for better modularity and separation of concerns.
+
+// Export the router for use in the main application
+module.exports = router;
+```
+
+```js
+// Support nested routes by assigning the tour ID from the URL to the request body
+if (!req.body.tour) req.body.tour = req.params.tourId; // If the tour ID is not provided in the request body, use the tour ID from the URL parameters
+
+// Automatically associate the logged-in user's ID with the review
+if (!req.body.user) req.body.user = req.user.id; // If the user ID is not provided in the request body, use the ID of the authenticated user
+
+// Create a new review in the database with the prepared request body
+const newReview = await Review.create(req.body);
+```
+
+```
+
 ```
 
 ---
 
 ---
 
-# 011 Virtual Populate: Tours & Reviews
+### Overview
 
-## Problem: Accessing Reviews from the Tour Model
+- **Topic**: Nested Routes in Express
+- **Purpose**: Understand what nested routes are, why they are needed, and how to implement them in Express.
 
-When querying for a specific tour, how do we fetch the reviews associated with it?
+### Key Points
 
-### Current Setup
-
-- **Parent Referencing** is implemented:
-  - Reviews reference the Tour model (child references parent).
-  - Tours do not reference the Review model (parent does not reference child).
-
-**Issue:**
-
-- The Tour model does not know about its reviews because the parent has no information about the child.
-
-### Solutions:
-
-### 1. Manually Query Reviews
-
-For every tour query, manually fetch the associated reviews:
-
-**Drawbacks:**
-
-- Inefficient and impractical for large-scale systems, as it could result in infinite growth of data being fetched.
-
-### 2. Child Referencing on Tours
-
-Store an array of all review IDs in each Tour document and populate the array when needed.
-
-```jsx
-//child referencing
-//but we do not want to do it, since it might go infinitely
-reviews: [{ type: mongoose.Schema.ObjectId, ref: 'Review' }];
-```
-
-**Why we avoid this:**
-
-- Storing review IDs in the Tour model is not scalable because the array can grow indefinitely.
-- Defeats the purpose of using parent referencing.
-
-### **Solution: Virtual Populate**
-
-Virtual Populate allows you to establish a relationship between the Tour and Review models without storing the review IDs in the Tour documents.
+1. **Creating a Review in Practice**:
+   - Previously, `tour ID` and `user ID` were manually passed in the request body.
+   - In a real-world scenario:
+     - `User ID`: Comes from the currently logged-in user.
+     - `Tour ID`: Encoded in the route (URL).
+2. **Nested Route Example**:
+   - POST request URL format for a new review:
+     ```jsx
+     /tours/:tourId/reviews
+     ```
+   - Benefits:
+     - `tourId` is embedded in the URL.
+     - `userId` is derived from the authenticated user.
+3. **Why Nested Routes**:
+   - Demonstrates a clear **parent-child relationship** between resources (e.g., Tours and Reviews).
+   - Simplifies understanding and usage of the API by making relationships explicit.
+4. **Accessing Reviews**:
+   - **GET Request**: Retrieve all reviews for a specific tour:
+     ```jsx
+     /tours/:tourId/reviews
+     ```
+   - **GET Request for Specific Review**:
+     ```jsx
+     /tours/:tourId/reviews/:reviewId
+     ```
+5. **Advantages of Nested Routes**:
+   - Improved readability and understanding of API structure.
+   - Easier than using query strings.
+   - Highlights relationships between resources (e.g., Reviews belong to Tours).
 
 ### Implementation
 
-1. Add a virtual field `reviews` to the Tour schema.
-2. Use Mongoose's `virtual` method to define the virtual field.
-3. Specify the referencing model, foreign field, and local field.
+1. **Defining Routes**:
 
-```js
-// Virtual Populate
-// Define a virtual field for the Tour model
-tourSchema.virtual('reviews', {
-  ref: 'Review', // Model to reference (Review model)
-  foreignField: 'tour', // Field in the Review model that references the Tour model
-  localField: '_id', // Field in the Tour model (current model) that matches the foreignField
-});
-```
+   - Define nested routes under the `tours` resource.
+   - Example: POST route to create a new review.
 
-### Explanation
+   ```jsx
+   router.route('/:tourId/reviews').post(reviewController.createReview);
+   ```
 
-- `ref`: Specifies the name of the model to reference (`Review` in this case).
-- `foreignField`: The field in the Review model that contains the ID of the Tour (e.g., `tour` field in the Review schema).
-- `localField`: The field in the Tour model that matches the `foreignField` (e.g., `_id` field in the Tour schema).
+2. **Importing Controllers**:
 
-### Benefits of Virtual Populate
+   - Import necessary controllers for handling reviews.
 
-- No need to store review IDs in the Tour documents.
-- Efficient querying with minimal storage overhead.
-- Allows dynamic population of reviews when querying Tours.
+   ```jsx
+   const reviewController = require('./controllers/reviewController');
+   ```
+
+3. **Mounting Nested Routes**:
+   - Mount the routes in the `tour` router since they start with `/tours`.
+4. **Tour ID as Parameter**:
+   - Use `:tourId` as a parameter in the route to identify the tour.
+5. **Controller Logic**:
+   - Write logic in the controller to handle the nested relationship:
+     - Extract `tourId` from the route parameters.
+     - Use the `userId` from the logged-in user for review creation.
+6. **Example Route**:
+
+   ```jsx
+   router
+     .route('/:tourId/reviews')
+     .post(authController.protect, reviewController.createReview);
+   ```
+
+7. **Benefits for API Users**:
+   - Clear and organized routes.
+   - Easier navigation of the API.
+   - Simplified resource management.
+
+### Summary
+
+- Nested routes provide a structured and logical way to represent relationships between resources.
+- They enhance API usability and maintainability.
+- Properly designed nested routes simplify the process of accessing and managing related data.
+
+## Running notes:
+
+- All right, in this lecture, we're going to talk about nested routes: what they are, why we need them, and how to implement them in Express.
+- Think about how, in practice, we want to create a new review.
+- So far, creating new reviews involved manually passing the tour ID and user ID into the request body.
+- During development, that's okay, but in the real world, user ID should come from the logged-in user, and tour ID should come from the current tour.
+- Ideally, these should be encoded in the URL when submitting a POST request for a new review.
+- Nested routes make sense when there is a parent-child relationship between resources, like tours and reviews.
+- Access reviews on tours with a nested route like `/tour/:id/reviews`.
+- A GET request to `/tour/:id/reviews` can retrieve all reviews for a specific tour.
+- Adding a review ID like `/tour/:id/reviews/:reviewId` can fetch a specific review for the tour.
+- Nested routes improve API readability and show clear relationships between resources.
+- Start implementing nested routes by focusing on the POST route for reviews.
+- Since the route starts with `tours`, it will be handled by the tour router.
+- Implement this functionality in the tour router for now, even though it involves reviews.
+- Import the review controller into the tour router to handle the reviews.
+- Define a nested route in the tour router as `/tour/:id/reviews`.
+- Use clear naming like `tourId` to differentiate between resources.
+- Mount the router and implement the logic for handling the nested routes.
