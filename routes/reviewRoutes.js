@@ -7,7 +7,8 @@ const router = express.Router({ mergeParams: true });
 //mergeParams: true is used to merge the params of the parent router with the child router.
 
 // POST /tours/:tourId/reviews
-// GET /reviews
+// GET /tours/:tourId/reviews
+// POST /reviews
 
 router
   .route('/')

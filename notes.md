@@ -1,63 +1,55 @@
-### Notes on Nested Route Improvement in Express Using `mergeParams`
+### Notes on Nested Routes in Node.js
 
-1. **Introduction to Nested Routes**
-   - Nested routes are common in API design, especially when entities like reviews belong to other entities like tours.
-   - Example: `/tours/:tourId/reviews` indicates reviews nested within tours.
-2. **Problem with Previous Implementation**
-   - The review route was defined in the tour router, causing confusion and duplicate code.
-   - Duplicate logic existed for creating reviews in both the tour router and the review router.
-   - Maintaining such code in multiple places is a bad practice.
-3. **Solution: Using `mergeParams` and Decoupling Routers**
-   - **Step 1:** Remove review-related code from the tour router to avoid duplication.
-   - **Step 2:** Import the review router into the tour router for better modularity.
-   - **Step 3:** Use `router.use` to mount the review router onto the tour router at a specific path.
-4. **Code Explanation**
-   - Import the review router into the tour router:
+### Overview of Nested GET Endpoint
+
+Previously created a nested **POST** endpoint to add reviews for a specific tour.
+
+- Now focusing on creating a nested **GET** endpoint to fetch reviews of a specific tour.
+
+### Existing `getAllReviews` Function
+
+- Fetches all reviews from the `reviews` collection.
+- Goal: Modify this function to:
+  - Retrieve all reviews for a specific tour.
+  - Retain functionality to fetch all reviews if no specific tour is specified.
+
+### Implementation Steps
+
+1. **Modify `getAllReviews` Handler**
+   - Use `mergeParams: true` in the router to enable access to `tourId` in nested routes.
+   - Check if `tourId` exists in the `req.params`.
+   - Create a `filter` object dynamically:
      ```jsx
-     const reviewRouter = require('./reviewRouter');
+     let filter = {};
+     if (req.params.tourId) {
+       filter = { tour: req.params.tourId };
+     }
      ```
-   - Mount the review router:
-     ```jsx
-     router.use('/:tourId/reviews', reviewRouter);
-     ```
-   - This ensures that URLs like `/tours/:tourId/reviews` are handled by the review router, keeping both routers modular and decoupled.
-5. **Key Concepts**
-   - **Routers as Middleware:** A router in Express is essentially middleware and can be used with `.use()`.
-   - **Routing Flow:**
-     - Requests start in the tour router if the URL begins with `/tours`.
-     - Requests matching `/tours/:tourId/reviews` are forwarded to the review router.
-   - This approach ensures clean separation of responsibilities between routers.
-6. **Benefits**
-   - Clean and maintainable codebase with reduced duplication.
-   - Modular structure where changes to the review router do not affect the tour router.
-   - Improved scalability for adding more nested routes or features.
-7. **Summary**
-   - By using `mergeParams` and proper routing techniques, nested routes can be implemented cleanly in Express.
-   - This ensures a better-organized API and simplifies future maintenance.
+   - Use the `filter` object in the `find` query to fetch:
+     - Specific tour reviews (`tour: tourId`).
+     - All reviews when `filter` is an empty object.
+2. **Test Functionality**
+   - Test regular `GET /reviews` endpoint to ensure it still retrieves all reviews.
+   - Test nested route `GET /tours/:tourId/reviews` to verify it retrieves reviews for a specific tour.
 
----
+### Testing Scenarios
 
----
+- Fetch all reviews:
+  - Confirm retrieving all documents in the collection.
+- Fetch specific tour reviews:
+  - Example: `GET /tours/:tourId/reviews`.
+  - Validate correct reviews appear for `tourId`.
+  - Example results:
+    - Tour "City Wanderer" → 1 review.
+    - Tour "Forest Hiker" → 2 reviews.
 
-# Own notes:
+### Key Takeaways
 
-in previous video we had implemented this in `tourRoute.js` :
+- **Dynamic Filters**: Utilize conditional logic to create filters based on route parameters.
+- **Merge Params**: Enable `mergeParams` to access parent route parameters in child routers.
+- **Reusable Logic**: Modify existing handler functions to adapt to new routes.
 
-```js
-router.route('/:tourId/reviews').post(
-  // Middleware to protect this route - only authenticated users can access it
-  authController.protect,
-  // Restrict access to certain roles (e.g., only users can create reviews)
-  authController.restrictTo('user'),
-  // Controller to handle the creation of a new review
-  reviewController.createReview,
-);
-```
+### Final Notes
 
-the same kind of code is there in `reviewRoutes.js` too. so there is duplicate code.
-so if we want to change something we need to change it the two files.
-
-now we will fix the problem.
-
-we will use `mergeParams`:
-mergeParams: true is used to merge the params of the parent router with the child router.
+- This approach simplifies creating nested routes for other use cases.
+- Tested and confirmed functionality for both regular and nested routes.
