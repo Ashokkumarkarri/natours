@@ -1,55 +1,60 @@
-### Notes on Nested Routes in Node.js
+# 015 Building Handler Factory Functions Delete
 
-### Overview of Nested GET Endpoint
+### **Handler Factory Function in Node.js**
 
-Previously created a nested **POST** endpoint to add reviews for a specific tour.
+- **Purpose**: Create a reusable function for deleting, updating, creating, or reading documents in any collection.
+- **Why?**
+  - Reduces duplicate code in controllers.
+  - Easier to apply changes (e.g., status codes) across all handlers.
+- **What is a Factory Function?**
+  - A function that returns another function.
+  - In this case, returns handler functions for CRUD operations.
 
-- Now focusing on creating a nested **GET** endpoint to fetch reviews of a specific tour.
+---
 
-### Existing `getAllReviews` Function
+### **Steps to Create a Delete Handler Factory**
 
-- Fetches all reviews from the `reviews` collection.
-- Goal: Modify this function to:
-  - Retrieve all reviews for a specific tour.
-  - Retain functionality to fetch all reviews if no specific tour is specified.
+1. **Identify the Problem**:
+   - Delete handlers (and others) often look similar but are specific to each model (e.g., tours, reviews).
+2. **Solution**:
+   - Write a single, generic function that can handle all models.
+3. **Implementation**:
+   - **New File**: Create `handlerFactory.js` in the `controllers` folder.
+   - **Factory Function**:
+     - Accepts a model as an argument.
+     - Returns an async handler function for deleting documents.
+4. **Generalize the Code**:
+   - Replace specific model (e.g., `Tour`) with a generic `model`.
+   - Use `document` instead of specific terms like `tour`.
 
-### Implementation Steps
+---
 
-1. **Modify `getAllReviews` Handler**
-   - Use `mergeParams: true` in the router to enable access to `tourId` in nested routes.
-   - Check if `tourId` exists in the `req.params`.
-   - Create a `filter` object dynamically:
-     ```jsx
-     let filter = {};
-     if (req.params.tourId) {
-       filter = { tour: req.params.tourId };
-     }
-     ```
-   - Use the `filter` object in the `find` query to fetch:
-     - Specific tour reviews (`tour: tourId`).
-     - All reviews when `filter` is an empty object.
-2. **Test Functionality**
-   - Test regular `GET /reviews` endpoint to ensure it still retrieves all reviews.
-   - Test nested route `GET /tours/:tourId/reviews` to verify it retrieves reviews for a specific tour.
+### **Example: Generalized Delete Handler**
 
-### Testing Scenarios
+-### **Example: Generalized Delete Handler**
 
-- Fetch all reviews:
-  - Confirm retrieving all documents in the collection.
-- Fetch specific tour reviews:
-  - Example: `GET /tours/:tourId/reviews`.
-  - Validate correct reviews appear for `tourId`.
-  - Example results:
-    - Tour "City Wanderer" → 1 review.
-    - Tour "Forest Hiker" → 2 reviews.
+- **Old (Specific)**:
+  Handles only tours:
+  ```js
+  const deleteTour = async (req, res, next) => {
+    const tour = await Tour.findByIdAndDelete(req.params.id);
+    // Response logic...
+  };
+  ```
+- **New (Generic)**:
+  Works for any model:
 
-### Key Takeaways
+  ```js
+  const deleteOne = (model) => async (req, res, next) => {
+    const doc = await model.findByIdAndDelete(req.params.id);
+    // Response logic...
+  };
+  ```
 
-- **Dynamic Filters**: Utilize conditional logic to create filters based on route parameters.
-- **Merge Params**: Enable `mergeParams` to access parent route parameters in child routers.
-- **Reusable Logic**: Modify existing handler functions to adapt to new routes.
+      - Pass the model (e.g., `Tour`, `User`) to `deleteOne` for reuse.
 
-### Final Notes
+### **Why Learn This?**
 
-- This approach simplifies creating nested routes for other use cases.
-- Tested and confirmed functionality for both regular and nested routes.
+- Advanced logic every JavaScript developer should know.
+- Prepares for scalable, maintainable applications.
+- Avoid repetitive manual work in controllers.

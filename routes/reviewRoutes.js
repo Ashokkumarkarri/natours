@@ -19,6 +19,7 @@ router
     reviewController.createReview,
   );
 
+router.route('/:id').delete(reviewController.deleteReview);
 module.exports = router;
 
 // authController.protect = this to do that only users who logged in will be able to access it protected routes.
