@@ -16,18 +16,6 @@ const filterObj = (obj, ...allowedFields) => {
   return newObj; // Return the filtered object
 };
 
-exports.getAllUsers = catchAsync(async (req, res, next) => {
-  const users = await User.find();
-  //SEND RESPONSE
-  res.status(200).json({
-    status: 'success',
-    results: users.length,
-    data: {
-      users: users,
-    },
-  });
-});
-
 // CatchAsync: Utility to handle asynchronous functions and errors
 exports.updateMe = catchAsync(async (req, res, next) => {
   // Step 1: Prevent password updates through this route
@@ -70,20 +58,16 @@ exports.deleteMe = catchAsync(async (req, res, next) => {
     data: null,
   });
 });
-exports.getUser = (req, res) => {
-  res.status(500).json({
-    status: 'error',
-    message: 'This route is not yet defined',
-  });
-};
 
 exports.createUser = (req, res) => {
   res.status(500).json({
     status: 'error',
-    message: 'This route is not yet defined',
+    message: 'This route is not yet defined! Please use signup instead',
   });
 };
 
+exports.getUser = factory.getOne(User);
+exports.getAllUsers = factory.getAll(User);
 //Do not update password whit this, since it is only for Admins
 exports.updateUser = factory.updateOne(User);
 

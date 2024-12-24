@@ -1,62 +1,56 @@
-### Creating Factory Functions for Updating and Creating Resources
+# 017 Factory Functions\_ Reading
 
-1. **Introduction to Factory Functions**:
-   - We continue building factory functions for handling updates and creating resources.
-   - The process is straightforward and follows the same steps as before.
-2. **Creating the `updateOne` Factory Function**:
-   - Copy the existing update code from the `tourController`.
-   - Focus on the part that handles the update logic.
-   - Replace specific models with a general one by passing the model as a parameter.
-   - Use an arrow function to return the logic, ensuring it's reusable.
-3. **Refactoring Update Logic**:
-   - Replace hardcoded model names with a generic `doc` or `document`.
-   - Simplify the response by wrapping the data in an envelope named `data`.
-   - For now, skip adding dynamic property names like `reviews` or `tours`.
-4. **Using the Factory Function in Routes**:
-   - Replace the existing update logic in `tourController` with `factory.updateOne` by passing the Tour model.
-   - Similarly, update the `userController`:
-     - Ensure the update function is limited to administrators.
-     - Do not allow password updates using `findByIdAndUpdate` as it bypasses middleware.
-5. **Handling Updates in the Review Controller**:
-   - Add an `updateReview` function in the `reviewController`.
-   - Use the `updateOne` factory function for consistent update behavior.
-6. **Adding Routes to Postman**:
-   - Define the `PATCH` routes for updates in the respective routers.
-   - For example, add `updateReview` to the `reviewRouter`.
-7. **Testing the Routes**:
-   - Save the updated routes in Postman for testing.
-   - Verify that the routes behave as expected when updating data.
+- Create factories for getting documents.
+- Start with `getOne` function.
+- Export `getOne`. It’s trickier because of `populate` in the `getTour` handler.
+- Look at the `populate` in the `getTour` handler.
+  - It’s different from other `get` handlers in resources.
+- Allow passing a `populate` options object into `getOne`.
 
 ---
 
+- Instead of just passing the model, include options:
+  - `populate` options.
+- Return the normal handler function.
+- Copy the necessary logic, adjust:
+  - Use `model` for querying.
+  - Rename variables, e.g., `doc` -> `document`.
+
 ---
 
-this middleware i have added so that it will modify the factory function.
+- Adjust logic for `populate`:
+  - Create the query first.
+  - If `populate` options exist, add them to the query.
+  - Await the final query.
 
-```js
-//middleware to set the tour and user id
-exports.setTourUserIds = (req, res, next) => {
-  //Allow nested routes
-  if (!req.body.tour) req.body.tour = req.params.tourId; // If the tour ID is not provided in the request body, use the tour ID from the URL parameters
-  // Automatically associate the logged-in user's ID with the review
-  if (!req.body.user) req.body.user = req.user.id; // If the user ID is not provided in the request body, use the ID of the authenticated user
-  next();
-};
+---
 
-exports.createReview = factory.createOne(Review);
+- Implementation:
+  - Query = `Model.findById`.
+  - If `populate` options exist:
+    - Query becomes `query.populate(populate options)`.
+  - Await the query and save to a document.
 
-// exports.createReview = catchAsync(async (req, res, next) => {
-//   //Allow nested routes
-//   if (!req.body.tour) req.body.tour = req.params.tourId; // If the tour ID is not provided in the request body, use the tour ID from the URL parameters
-//   // Automatically associate the logged-in user's ID with the review
-//   if (!req.body.user) req.body.user = req.user.id; // If the user ID is not provided in the request body, use the ID of the authenticated user
-//   const newReview = await Review.create(req.body);
+---
 
-//   res.status(201).json({
-//     status: 'success',
-//     data: {
-//       review: newReview,
-//     },
-//   });
-// });
-```
+- Use this approach in `getTour`:
+  - Replace existing `getTour` logic with `factory.getOne`.
+  - Pass `Tour` model and `populate` options.
+  - Define `path` for `reviews`.
+
+---
+
+- Test `getTour`:
+  - Fetch a specific tour.
+  - Check if `reviews` population works.
+
+---
+
+- Apply `getOne` to other resources:
+  - Example: In `userController`, use `factory.getOne` with `userModel`.
+  - No `populate` options for users.
+
+---
+
+- Update error message for `createUser`:
+  - "This route is not defined, use signup instead."
