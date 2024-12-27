@@ -16,17 +16,31 @@ router
   .get(tourController.aliasTopTours, tourController.getAllTours);
 
 router.route('/tour-stats').get(tourController.getTourStats);
-router.route('/monthly-plan/:year').get(tourController.getMonthlyPlan);
+router
+  .route('/monthly-plan/:year')
+  .get(
+    authController.protect,
+    authController.restrictTo('admin', 'lead-guide', 'guide'),
+    tourController.getMonthlyPlan,
+  );
 
 router
   .route('/')
-  .get(authController.protect, tourController.getAllTours)
-  .post(tourController.createTour);
+  .get(tourController.getAllTours) //anyone can read the tours without being authenticated
+  .post(
+    authController.protect,
+    authController.restrictTo('admin', 'lead-guide'),
+    tourController.createTour,
+  ); //only admin,guides  can create a tour
 
 router
   .route('/:id')
   .get(tourController.getTour)
-  .patch(tourController.updateTour)
+  .patch(
+    authController.protect,
+    authController.restrictTo('admin', 'lead-guide'),
+    tourController.updateTour,
+  )
   .delete(
     authController.protect, // Ensure the user is authenticated
     authController.restrictTo('admin', 'lead-guide'), // Restrict to specific roles

@@ -1,53 +1,47 @@
-# 018 Adding a \_me Endpoint
+# 019 Adding Missing Authentication and Authorization
 
-### Notes on Implementing `/me` Endpoint in Node.js
+### Notes on Authentication and Authorization in Node.js API
 
-1. **Purpose of `/me` Endpoint**:
-   - A common practice in APIs to allow users to retrieve their own data.
-   - Eliminates the need to pass a user ID in the URL.
-2. **Steps to Implement `/me` Endpoint**:
-   - Use a middleware to set the `req.params.id` to the current user's ID.
-   - Reuse existing `getOne` factory function to retrieve the user data.
-3. **Middleware for `/me` Endpoint**:
-
-   ```jsx
-   exports.getMe = (req, res, next) => {
-     req.params.id = req.user.id; // Assign current user's ID to req.params.id
-     next(); // Pass control to the next middleware
-   };
-   ```
-
-4. **Define `/me` Route**:
-
-   ```jsx
-   router.get(
-     '/me',
-     authController.protect, // Ensure user is logged in
-     userController.getMe, // Add user ID to params
-     userController.getUser, // Fetch user data using the factory function
-   );
-   ```
-
-5. **How It Works**:
-   - **Authentication**: `authController.protect` middleware verifies the user and attaches their data (e.g., ID) to `req.user`.
-   - **Parameter Setting**: `userController.getMe` sets `req.params.id` to `req.user.id`.
-   - **Data Retrieval**: `userController.getUser` fetches the user document using the ID from `req.params`.
-6. **Key Points**:
-   - Middleware simplifies the logic by handling ID assignment automatically.
-   - No need for additional logic in `getOne` since the middleware adjusts the request parameters dynamically.
-   - The `/me` endpoint retrieves user data without requiring body or URL parameters.
-7. **Testing the Endpoint**:
-   - Send a GET request to `/me` with a valid token for authorization.
-   - Expected Response:
-     ```json
-     {
-       "name": "John Doe",
-       "email": "john.doe@example.com",
-       "role": "user",
-       "data": "..."
-     }
+1. **Authentication and Authorization on Routes**:
+   - Authentication and authorization are handled at the route level.
+   - For example, the **tour resource** has different authorization rules for different actions:
+     - **GET requests** (e.g., getting all tours) are **open to everyone** (no authentication required).
+     - **POST and PUT requests** (e.g., creating or editing tours) are restricted to **admins** and **lead guides** using middleware:
+       ```jsx
+       authController.protect, authController.restrictTo('admin', 'lead-guide');
+       ```
+2. **Using Middleware for Authentication**:
+   - `authController.protect` is a middleware that checks if a user is authenticated (logged in).
+   - **Global Protection**:
+     - Instead of adding `authController.protect` to each route individually, it can be applied to all routes at once by using:
+       ```jsx
+       router.use(authController.protect);
+       ```
+     - This ensures that all routes following this middleware require authentication.
+3. **Handling Role-Based Authorization**:
+   - For actions like **getting users**, **creating users**, **updating** or **deleting users**, only **admins** should have access.
+   - The middleware `authController.restrictTo('admin')` ensures that only admins can perform these actions.
+4. **Example of Protecting Routes**:
+   - If you want to protect the route for **updating the password**, it would require authentication:
+     ```jsx
+     router.use(authController.protect);
      ```
-8. **Benefits**:
-   - Clean and reusable code.
-   - Efficient implementation leveraging middleware.
-   - Enhances security by avoiding explicit passing of sensitive IDs.
+   - This middleware ensures that only authenticated users can update their password.
+5. **Testing the Protection**:
+   - After setting up `authController.protect`, if a user tries to access a protected route without being logged in, they will get an error (e.g., "You are not logged in").
+   - Example with **Postman**: If you test an endpoint like getting user data, you’ll need to pass a **Bearer token** for authentication.
+   - If you try to access an admin-restricted route without admin rights, you will get a "Permission Denied" error.
+6. **Refining Authorization for Specific Routes**:
+   - The middleware can be applied in sequence to protect or restrict access based on the user role:
+     - `authController.restrictTo('admin')`: Ensures that only admins can perform certain actions.
+     - For **reviews**, only regular users can post, not guides or admins.
+     - Apply this authorization logic globally for routes related to reviews.
+7. **Postman Example**:
+   - The Postman tests need to be updated to reflect the authentication and authorization rules:
+     - **Bearer tokens** are required for routes that need authentication.
+     - Admin routes should also check for the correct authorization token to ensure only admins can access them.
+8. **Final Steps**:
+   - Make sure all routes that should be protected are marked with `authController.protect` for authentication and `authController.restrictTo` for role-based authorization.
+   - After ensuring the routes are properly protected, you can update Postman tests to include the necessary authentication tokens where required.
+
+These steps ensure that the API is both **secure** and **role-specific**, with proper access control for users and admins.
