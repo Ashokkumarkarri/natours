@@ -16,6 +16,11 @@ const filterObj = (obj, ...allowedFields) => {
   return newObj; // Return the filtered object
 };
 
+exports.getMe = (req, res, next) => {
+  req.params.id = req.user.id;
+  next();
+};
+
 // CatchAsync: Utility to handle asynchronous functions and errors
 exports.updateMe = catchAsync(async (req, res, next) => {
   // Step 1: Prevent password updates through this route

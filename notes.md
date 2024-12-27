@@ -1,56 +1,53 @@
-# 017 Factory Functions\_ Reading
+# 018 Adding a \_me Endpoint
 
-- Create factories for getting documents.
-- Start with `getOne` function.
-- Export `getOne`. It’s trickier because of `populate` in the `getTour` handler.
-- Look at the `populate` in the `getTour` handler.
-  - It’s different from other `get` handlers in resources.
-- Allow passing a `populate` options object into `getOne`.
+### Notes on Implementing `/me` Endpoint in Node.js
 
----
+1. **Purpose of `/me` Endpoint**:
+   - A common practice in APIs to allow users to retrieve their own data.
+   - Eliminates the need to pass a user ID in the URL.
+2. **Steps to Implement `/me` Endpoint**:
+   - Use a middleware to set the `req.params.id` to the current user's ID.
+   - Reuse existing `getOne` factory function to retrieve the user data.
+3. **Middleware for `/me` Endpoint**:
 
-- Instead of just passing the model, include options:
-  - `populate` options.
-- Return the normal handler function.
-- Copy the necessary logic, adjust:
-  - Use `model` for querying.
-  - Rename variables, e.g., `doc` -> `document`.
+   ```jsx
+   exports.getMe = (req, res, next) => {
+     req.params.id = req.user.id; // Assign current user's ID to req.params.id
+     next(); // Pass control to the next middleware
+   };
+   ```
 
----
+4. **Define `/me` Route**:
 
-- Adjust logic for `populate`:
-  - Create the query first.
-  - If `populate` options exist, add them to the query.
-  - Await the final query.
+   ```jsx
+   router.get(
+     '/me',
+     authController.protect, // Ensure user is logged in
+     userController.getMe, // Add user ID to params
+     userController.getUser, // Fetch user data using the factory function
+   );
+   ```
 
----
-
-- Implementation:
-  - Query = `Model.findById`.
-  - If `populate` options exist:
-    - Query becomes `query.populate(populate options)`.
-  - Await the query and save to a document.
-
----
-
-- Use this approach in `getTour`:
-  - Replace existing `getTour` logic with `factory.getOne`.
-  - Pass `Tour` model and `populate` options.
-  - Define `path` for `reviews`.
-
----
-
-- Test `getTour`:
-  - Fetch a specific tour.
-  - Check if `reviews` population works.
-
----
-
-- Apply `getOne` to other resources:
-  - Example: In `userController`, use `factory.getOne` with `userModel`.
-  - No `populate` options for users.
-
----
-
-- Update error message for `createUser`:
-  - "This route is not defined, use signup instead."
+5. **How It Works**:
+   - **Authentication**: `authController.protect` middleware verifies the user and attaches their data (e.g., ID) to `req.user`.
+   - **Parameter Setting**: `userController.getMe` sets `req.params.id` to `req.user.id`.
+   - **Data Retrieval**: `userController.getUser` fetches the user document using the ID from `req.params`.
+6. **Key Points**:
+   - Middleware simplifies the logic by handling ID assignment automatically.
+   - No need for additional logic in `getOne` since the middleware adjusts the request parameters dynamically.
+   - The `/me` endpoint retrieves user data without requiring body or URL parameters.
+7. **Testing the Endpoint**:
+   - Send a GET request to `/me` with a valid token for authorization.
+   - Expected Response:
+     ```json
+     {
+       "name": "John Doe",
+       "email": "john.doe@example.com",
+       "role": "user",
+       "data": "..."
+     }
+     ```
+8. **Benefits**:
+   - Clean and reusable code.
+   - Efficient implementation leveraging middleware.
+   - Enhances security by avoiding explicit passing of sensitive IDs.
