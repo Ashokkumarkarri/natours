@@ -1,47 +1,35 @@
-# 019 Adding Missing Authentication and Authorization
+# 020 Importing Review and User Data
 
-### Notes on Authentication and Authorization in Node.js API
+delete all the fake or test: users, review, tours data
+and update the real data
 
-1. **Authentication and Authorization on Routes**:
-   - Authentication and authorization are handled at the route level.
-   - For example, the **tour resource** has different authorization rules for different actions:
-     - **GET requests** (e.g., getting all tours) are **open to everyone** (no authentication required).
-     - **POST and PUT requests** (e.g., creating or editing tours) are restricted to **admins** and **lead guides** using middleware:
-       ```jsx
-       authController.protect, authController.restrictTo('admin', 'lead-guide');
-       ```
-2. **Using Middleware for Authentication**:
-   - `authController.protect` is a middleware that checks if a user is authenticated (logged in).
-   - **Global Protection**:
-     - Instead of adding `authController.protect` to each route individually, it can be applied to all routes at once by using:
-       ```jsx
-       router.use(authController.protect);
-       ```
-     - This ensures that all routes following this middleware require authentication.
-3. **Handling Role-Based Authorization**:
-   - For actions like **getting users**, **creating users**, **updating** or **deleting users**, only **admins** should have access.
-   - The middleware `authController.restrictTo('admin')` ensures that only admins can perform these actions.
-4. **Example of Protecting Routes**:
-   - If you want to protect the route for **updating the password**, it would require authentication:
+### Importing Development Data in Node.js
+
+1. **Objective**: Import users and reviews data in addition to tours for API development.
+   - Users: ~20 test users.
+   - Reviews: ~60 entries for testing.
+2. **Steps to Modify Import Script**:
+   - Update the script to handle `users` and `reviews`.
+   - Import corresponding models: `User` and `Review`.
+   - Duplicate existing code for tours to process users and reviews.
+3. **Clearing Existing Data**:
+   - Use terminal commands to delete test users and reviews along with tours.
+   - Verify deletions in MongoDB Compass.
+4. **Handling Validation Issues**:
+   - Turn off validation for specific operations:
      ```jsx
-     router.use(authController.protect);
+     validateBeforeSave: false;
      ```
-   - This middleware ensures that only authenticated users can update their password.
-5. **Testing the Protection**:
-   - After setting up `authController.protect`, if a user tries to access a protected route without being logged in, they will get an error (e.g., "You are not logged in").
-   - Example with **Postman**: If you test an endpoint like getting user data, you’ll need to pass a **Bearer token** for authentication.
-   - If you try to access an admin-restricted route without admin rights, you will get a "Permission Denied" error.
-6. **Refining Authorization for Specific Routes**:
-   - The middleware can be applied in sequence to protect or restrict access based on the user role:
-     - `authController.restrictTo('admin')`: Ensures that only admins can perform certain actions.
-     - For **reviews**, only regular users can post, not guides or admins.
-     - Apply this authorization logic globally for routes related to reviews.
-7. **Postman Example**:
-   - The Postman tests need to be updated to reflect the authentication and authorization rules:
-     - **Bearer tokens** are required for routes that need authentication.
-     - Admin routes should also check for the correct authorization token to ensure only admins can access them.
-8. **Final Steps**:
-   - Make sure all routes that should be protected are marked with `authController.protect` for authentication and `authController.restrictTo` for role-based authorization.
-   - After ensuring the routes are properly protected, you can update Postman tests to include the necessary authentication tokens where required.
+   - Temporarily disable password encryption as provided users already have encrypted passwords.
+5. **Testing the Changes**:
+   - Re-import data after clearing duplicates.
+   - Confirm data is imported correctly for users, tours, and reviews in Compass.
+   - Verify that passwords remain unencrypted as intended.
+6. **Validation**:
+   - Compare imported data with the original JSON file to ensure accuracy.
 
-These steps ensure that the API is both **secure** and **role-specific**, with proper access control for users and admins.
+### Key Notes:
+
+- Disable validations and encryption selectively when working with pre-existing data.
+- Always clear old data before importing to avoid duplicates.
+- Use MongoDB Compass to verify database state after operations.
