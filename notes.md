@@ -1,44 +1,71 @@
-# 022 Calculating Average Rating on Tours - Part 1
+# 023 Calculating Average Rating on Tours - Part 2
 
-**Key Concept: Calculating and Storing Average Ratings for Tours**
+- note: `did not understand this lecture well`
 
-- **Problem:** The `averageRating` and `numberOfRatings` fields on the `Tour` document currently hold placeholder values and are not dynamically updated.
-- **Solution:**
-  - Create a `static` method (`calcAverageRatings`) on the `Review` schema.
-  - This method will:
-    - Use the `aggregate` pipeline to:
-      - **Match:** Filter reviews based on the provided `tourId`.
-      - **Group:** Group all matching reviews and calculate:
-        - `nRating`: Total number of reviews.
-        - `avgRating`: Average rating of all reviews.
-    - Update the corresponding `Tour` document with the calculated `ratingsQuantity` and `ratingsAverage`.
-  - Implement middleware (`post('save')`) on the `Review` schema to trigger the `calcAverageRatings` method after a new review is saved.
+### Notes for Middleware with `findOneAnd` Operations in Mongoose
 
-**Technical Implementation:**
+### **Purpose**:
 
-- **`Review` Schema:**
-  - Define the `calcAverageRatings` static method:
-    - Use `this.aggregate()` to perform the aggregation pipeline.
-    - Update the `Tour` document using `findByIdAndUpdate()`.
-  - Implement `post('save')` middleware:
-    - Call `this.constructor.calcAverageRatings(this.tour)` to trigger the calculation.
+- To ensure the `calcAverageRatings` function is executed after a document is updated or deleted.
+- The pre-middleware fetches the current document before the update or delete operation, and the post-middleware triggers the `calcAverageRatings` function using the document's data.
 
-**Testing:**
+---
 
-- Create a new tour.
-- Create multiple reviews for the tour with varying ratings.
-- Verify that the `averageRating` and `numberOfRatings` fields on the `Tour` document are updated correctly after each review is saved.
+### **Code Explanation**:
 
-**Note:**
+1. **Pre-Middleware**:
 
-- The provided code snippet contains a potential error: using `pre('save')` instead of `post('save')` in the middleware. The `post('save')` hook is more appropriate because it executes after the review is saved to the database.
-- The code snippet also includes debugging and testing steps that demonstrate the functionality.
+   ```jsx
+   reviewSchema.pre(/^findOneAnd/, async function (next) {
+     this.r = await this.clone().findOne();
+     console.log(this.r);
+     next();
+   });
+   ```
 
-**Key Takeaways:**
+   - **Regex `/^findOneAnd/`**:
+     - Targets all Mongoose methods starting with `findOneAnd` (e.g., `findOneAndUpdate`, `findOneAndDelete`).
+   - **`this`**:
+     - Refers to the current query being executed.
+   - **`this.clone().findOne()`**:
+     - Clones the query and executes `findOne()` to retrieve the document before the update or delete operation.
+     - Prevents the "Query was already executed" error by cloning the query before executing it.
+   - **Purpose**:
+     - Retrieves the document before the operation for use in the post-middleware.
 
-- Static methods in Mongoose can be used to perform operations on the model itself.
-- The aggregation pipeline is a powerful tool for performing complex data transformations.
-- Middleware can be used to execute code before or after specific document operations (e.g., saving, updating, deleting).
-- Careful consideration of the timing of middleware execution is crucial for correct behavior.
+---
 
-I hope these notes are helpful! Let me know if you have any other questions.
+1. **Post-Middleware**:
+
+   ```jsx
+   reviewSchema.post(/^findOneAnd/, async function () {
+     await this.r.constructor.calcAverageRatings(this.r.tour);
+   });
+   ```
+
+   - **Purpose**:
+     - Ensures the `calcAverageRatings` method is triggered after the document is updated or deleted.
+   - **`this.r`**:
+     - Refers to the document retrieved in the pre-middleware.
+   - **`this.r.constructor.calcAverageRatings`**:
+     - Calls the static `calcAverageRatings` method on the `Review` model to update average ratings for the associated tour.
+
+---
+
+### **Use Case**:
+
+- **When to Use**:
+  - If the application requires recalculating derived data (e.g., average ratings) after modifying or deleting a related document.
+- **Example**:
+  - When a review is updated or deleted, the average ratings and the number of ratings for the associated tour should be recalculated.
+
+---
+
+### **Key Points**:
+
+1. Use pre-middleware to fetch the document before the query is executed.
+2. Use post-middleware to trigger logic after the query is completed.
+3. The `clone()` method prevents the "Query was already executed" error.
+4. Ensure the post-middleware logic handles cases where the document (`this.r`) might not exist (e.g., no matching document found).
+
+This structure ensures robust handling of dependent operations (like updating average ratings) in a Mongoose schema.

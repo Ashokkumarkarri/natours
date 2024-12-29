@@ -77,10 +77,17 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
   ]);
   console.log(stats);
   //update the tour document
-  await Tour.findByIdAndUpdate(tourId, {
-    ratingsQuantity: stats[0].nRating,
-    ratingsAverage: stats[0].avgRating,
-  });
+  if (stats.length > 0) {
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsQuantity: stats[0].nRating,
+      ratingsAverage: stats[0].avgRating,
+    });
+  } else {
+    await Tour.findByIdAndUpdate(tourId, {
+      ratingsQuantity: 0,
+      ratingsAverage: 4.5,
+    });
+  }
 };
 //calcAverageRatings is a static method and it is called on the model itself
 reviewSchema.post('save', function (next) {
@@ -91,6 +98,18 @@ reviewSchema.post('save', function (next) {
 });
 
 //we also need to update the ratings when we update or delete a review, but we will do it next video
+
+//findByIdAndUpdate
+//findByIdAndDelete
+//for this we use query middleware instead of document middleware because we need to access the current document in the post middleware and we can only do that in document middleware and not in query middleware.
+reviewSchema.pre(/^findOneAnd/, async function (next) {
+  this.r = await this.clone().findOne();
+  next();
+});
+
+reviewSchema.post(/^findOneAnd/, async function () {
+  await this.r.constructor.calcAverageRatings(this.r.tour);
+});
 
 const Review = mongoose.model('Review', reviewSchema);
 module.exports = Review;
