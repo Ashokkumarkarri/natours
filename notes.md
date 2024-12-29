@@ -1,71 +1,25 @@
-# 023 Calculating Average Rating on Tours - Part 2
+Sure, here are the notes for the provided code:
 
-- note: `did not understand this lecture well`
+```js
+// Create a compound index on the 'tour' and 'user' fields
+// This ensures that the combination of 'tour' and 'user' is unique
+// Prevents a user from writing more than one review for the same tour
+reviewSchema.index({ tour: 1, user: 1 }, { unique: true });
+```
 
-### Notes for Middleware with `findOneAnd` Operations in Mongoose
+### **Explanation:**
 
-### **Purpose**:
+1. **Compound Index**:
+   - The code creates a compound index on the tour and user fields of the reviewSchema.
+   - A compound index is an index on multiple fields. In this case, it is on the tour and user fields.
+2. **Uniqueness**:
+   - The `{ unique: true }` option ensures that the combination of tour and user is unique.
+   - This means that a user can only write one review for a specific tour. If a user tries to write another review for the same tour, it will result in a duplicate key error.
+3. **Index Creation**:
+   - Mongoose will create this index in the MongoDB collection when the application starts.
+   - If there are existing duplicate entries in the collection, the index creation will fail until the duplicates are resolved.
 
-- To ensure the `calcAverageRatings` function is executed after a document is updated or deleted.
-- The pre-middleware fetches the current document before the update or delete operation, and the post-middleware triggers the `calcAverageRatings` function using the document's data.
+### **Usage:**
 
----
-
-### **Code Explanation**:
-
-1. **Pre-Middleware**:
-
-   ```jsx
-   reviewSchema.pre(/^findOneAnd/, async function (next) {
-     this.r = await this.clone().findOne();
-     console.log(this.r);
-     next();
-   });
-   ```
-
-   - **Regex `/^findOneAnd/`**:
-     - Targets all Mongoose methods starting with `findOneAnd` (e.g., `findOneAndUpdate`, `findOneAndDelete`).
-   - **`this`**:
-     - Refers to the current query being executed.
-   - **`this.clone().findOne()`**:
-     - Clones the query and executes `findOne()` to retrieve the document before the update or delete operation.
-     - Prevents the "Query was already executed" error by cloning the query before executing it.
-   - **Purpose**:
-     - Retrieves the document before the operation for use in the post-middleware.
-
----
-
-1. **Post-Middleware**:
-
-   ```jsx
-   reviewSchema.post(/^findOneAnd/, async function () {
-     await this.r.constructor.calcAverageRatings(this.r.tour);
-   });
-   ```
-
-   - **Purpose**:
-     - Ensures the `calcAverageRatings` method is triggered after the document is updated or deleted.
-   - **`this.r`**:
-     - Refers to the document retrieved in the pre-middleware.
-   - **`this.r.constructor.calcAverageRatings`**:
-     - Calls the static `calcAverageRatings` method on the `Review` model to update average ratings for the associated tour.
-
----
-
-### **Use Case**:
-
-- **When to Use**:
-  - If the application requires recalculating derived data (e.g., average ratings) after modifying or deleting a related document.
-- **Example**:
-  - When a review is updated or deleted, the average ratings and the number of ratings for the associated tour should be recalculated.
-
----
-
-### **Key Points**:
-
-1. Use pre-middleware to fetch the document before the query is executed.
-2. Use post-middleware to trigger logic after the query is completed.
-3. The `clone()` method prevents the "Query was already executed" error.
-4. Ensure the post-middleware logic handles cases where the document (`this.r`) might not exist (e.g., no matching document found).
-
-This structure ensures robust handling of dependent operations (like updating average ratings) in a Mongoose schema.
+- This index is useful for preventing duplicate reviews by the same user for the same tour.
+- It helps maintain data integrity and ensures that each user can only provide one review per tour.

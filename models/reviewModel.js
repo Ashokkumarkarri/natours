@@ -36,6 +36,8 @@ const reviewSchema = new mongoose.Schema(
   }, // When we have a virtual property that is not saved in the database but is used for calculations, we need to enable this to include it in the output.
 );
 
+reviewSchema.index({ tour: 1, user: 1 }, { unique: true }); // a user can write only one review for a tour
+
 //POPULATE
 //regular expression
 reviewSchema.pre(/^find/, function (next) {
