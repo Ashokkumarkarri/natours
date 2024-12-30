@@ -212,12 +212,12 @@ tourSchema.post(/^find/, function (docs, next) {
 });
 
 //AGGREGATION MIDDLEWARE
-tourSchema.pre('aggregate', function (next) {
-  console.log(this);
-  this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
-  //this refers to the aggregate object
-  next();
-});
+// tourSchema.pre('aggregate', function (next) {
+//   this.pipeline().unshift({ $match: { secretTour: { $ne: true } } });
+//   //this refers to the aggregate object
+//   next();
+//   console.log(this);
+// });
 
 const Tour = mongoose.model('Tour', tourSchema);
 //name of the model  , schema
