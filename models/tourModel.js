@@ -126,6 +126,9 @@ const tourSchema = new mongoose.Schema(
 // tourSchema.index({ price: 1 });
 tourSchema.index({ price: 1, ratingsAverage: -1 }); //1 for ascending, -1 for descending
 tourSchema.index({ slug: 1 });
+tourSchema.index({ startLocation: '2dsphere' }); //for geospatial data (longitude, latitude)
+//we need to create index for the fields that we are going to query often. It will make the query faster.
+
 tourSchema.virtual('durationWeeks').get(function () {
   return this.duration / 7;
 });
