@@ -1,4 +1,3 @@
-const path = require('path'); //core module, built in module, we use path module to manipulate the path names.
 const express = require('express');
 const morgan = require('morgan');
 const rateLimit = require('express-rate-limit');
@@ -6,6 +5,7 @@ const helmet = require('helmet');
 const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
+const path = require('path'); //core module, built in module, we use path module to manipulate the path names.
 
 // const { execArgv } = require('process');
 const AppError = require('./utils/appError');
@@ -75,9 +75,11 @@ app.use((req, res, next) => {
 
 //3)Routes
 app.get('/', (req, res) => {
-  res.status(200).render('base');
-}); //name of the pug file that we want to render.
-//express will automatically look for the file in the views folder.
+  res.status(200).render('base', {
+    tour: 'The Forest Hiker',
+    user: 'Jonas',
+  });
+});
 
 app.use('/api/v1/tours', tourRouter);
 app.use('/api/v1/users', userRouter);
