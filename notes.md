@@ -1,234 +1,280 @@
-### Notes on Pug Templates
+# 005 Creating Our Base Template
 
-### **Introduction to Pug**
+### Notes on Creating a Base Template in Node.js using Pug
 
-- Pug is a whitespace-sensitive syntax for writing HTML.
-- The core idea is simplicity: you write HTML using just element names and indentation.
-- It's essential to have basic HTML knowledge to work effectively with Pug.
+1. **Introduction to the Base Template**:
+   - The base template serves as the foundation for all other templates.
+   - The process involves converting an existing HTML file (from the starter files) into a **Pug template**.
+   - The focus is on creating the structure: header and footer. The dynamic content will be added later.
+2. **Objective**:
+   - Prepare a base layout that includes the header and footer.
+   - Ensure the template is ready for dynamic injection of content at a later stage.
+3. **Steps to Create the Base Template**:
+   - **Step 1: Clean Existing Content**:
+     - Remove unnecessary placeholder content previously used to demonstrate Pug's features.
+   - **Step 2: Convert HTML to Pug**:
+     - Open the `overview.html` file and analyze its content.
+     - Copy and begin translating its structure into a Pug-compatible format.
+4. **Working with the HTML Head Section**:
+   - Elements like the **title**, **favicon**, **style links**, and **Google fonts** are part of the head.
+   - Copy the title content and ensure proper formatting in Pug using single quotes for attributes.
+   - Include responsive web development meta tags and external stylesheets.
+5. **Converting the Header Section**:
+   - The header contains the dark gray navigation bar at the top.
+   - Translate the HTML header structure into Pug using indentation and class syntax:
+     - Use `.header` to define the header class.
+     - For nested elements, use indentation for structure, e.g., `.nav.nav-tours`.
+6. **BEM Architecture**:
+   - The structure uses the **Block-Element-Modifier (BEM)** naming convention:
+     - **Block**: Represents a standalone entity (e.g., `nav`).
+     - **Element**: Denotes components within a block (e.g., `__tours`).
+     - **Modifier**: Represents a variation of the block or element (e.g., `-active`).
+   - While understanding BEM is optional, it helps maintain organized CSS.
+7. **Adding Navigation Links**:
+   - Navigation (`<nav>`) contains links (`<a>`).
+   - Use Pug's concise syntax to define links and their classes.
+8. **Efficiency of Pug**:
+   - Translating large blocks of HTML into Pug significantly reduces the amount of code while retaining clarity.
+   - Comments in Pug can be written to appear in the HTML output for clarity:
+     - Use `//` for visible comments in the HTML.
+9. **Finalizing the Base Template**:
+   - Once the structure is converted, test the template to ensure everything renders as expected.
+   - The header and footer are now ready for dynamic content integration.
 
 ---
 
-### **Setting Up Basic HTML Structure in Pug**
+### Key Notes:
 
-1. **Doctype and HTML Element**:
-   - All HTML documents start with a `<!DOCTYPE>` declaration and an `<html>` element.
-   - In Pug, the syntax is simplified:
-     - Write `doctype html` for the doctype.
-     - Write `html` to define the root element.
-2. **Nested Elements**:
-   - Pug uses **indentation** to represent nested HTML elements.
-   - For example, a `<head>` element inside `<html>` is written as:
+- **Use Single Quotes**: Always replace double quotes with single quotes for attributes in Pug.
+- **Indentation**: Pug relies on indentation to represent HTML hierarchy.
+- **Reusable Layout**: The base template is designed to be modular, supporting easy injection of dynamic content.
+
+This approach simplifies the transition from static HTML to a Pug-based templating system, allowing for scalable and maintainable web development.
+
+---
+
+### Syntax
+
+### **Basic Syntax**
+
+1. **Tags**:
+
+   Tags are written without angle brackets (`<>`).
+
+   Example:
+
+   ```
+   div
+   p
+   h1
+   ```
+
+2. **Classes**:
+
+   Use a `.` followed by the class name.
+
+   Example:
+
+   ```
+   div.className
+   p.myParagraph
+   header.headerClass
+   ```
+
+3. **IDs**:
+
+   Use `#` followed by the ID.
+
+   Example:
+
+   ```
+   div#myId
+   p#uniqueParagraph
+   ```
+
+4. **Nesting**:
+
+   Indentation determines nesting.
+
+   Example:
+
+   ```
+   div
+     p This is a paragraph inside a div.
+   ```
+
+5. **Attributes**:
+
+   Use parentheses to specify attributes, separating them with commas.
+
+   Example:
+
+   ```
+   a(href="https://example.com", target="_blank") Link to Example
+   ```
+
+---
+
+### **Working with Classes and IDs**
+
+- You can combine tags, classes, and IDs.Example:
+  ```
+  div#main.container
+  nav.navbar.navbar-dark
+  ```
+
+---
+
+### **Text Content**
+
+- Place the text immediately after the tag.Example:
+  ```
+  h1 Welcome to My Website
+  p This is some content.
+  ```
+
+---
+
+### **HTML Comments**
+
+- Use `//` for comments.
+  Example:
+  ```
+  // This is a comment
+  ```
+- To output comments in the HTML, use `//-`.
+  Example:
+  ```
+  //- This comment will appear in the HTML
+  ```
+
+---
+
+### **Lists**
+
+1. **Unordered List**:
+
+   Example:
+
+   ```
+   ul
+     li Item 1
+     li Item 2
+   ```
+
+2. **Ordered List**:
+
+   Example:
+
+   ```
+   ol
+     li First
+     li Second
+   ```
+
+---
+
+### **Links and Navigation**
+
+- Links are created using the `a` tag with an `href` attribute.
+  Example:
+  ```
+  a(href="/home") Home
+  ```
+- Nested links in navigation:
+  Example:
+  ```
+  nav.navbar
+    a(href="/about") About
+    a(href="/contact") Contact
+  ```
+
+---
+
+### **Images**
+
+- Use the `img` tag with a `src` attribute.Example:
+  ```
+  img(src="/path/to/image.jpg", alt="Image description")
+  ```
+
+---
+
+### **Including External Files**
+
+- To include external files, use `include`.Example:
+  ```
+  include header.pug
+  ```
+
+---
+
+### **BEM Syntax (Block Element Modifier)**
+
+- BEM syntax can be represented in Pug by chaining classes.Example:
+  ```
+  div.block__element--modifier
+  ```
+
+---
+
+### **Final Example**
+
+Here’s a practical layout using the syntax:
+
+```html
+doctype html html head title My Pug Page link(rel="stylesheet",
+href="styles.css") body header.headerClass nav.navbar a(href="/") Home
+a(href="/about") About main h1 Welcome to Pug p This is a sample template. ul li
+Item 1 li Item 2 img(src="logo.png", alt="Logo") footer.footerClass p &copy;
+2025 My Website
+```
+
+### Summary of Pug Syntax from the Subtitle File
+
+1. **Writing Classes**:
+   - Use a dot (`.`) followed by the class name.Example: `.header` creates a `<div>` with the `class="header"`.
+   - Multiple classes can be chained using additional dots.Example: `.nav.nav-tours` creates `<div class="nav nav-tours">`.
+2. **Defining HTML Elements**:
+   - Start with the tag name, followed by a dot or parentheses for attributes.Example:
      ```
-     html
-       head
+     header.header
+     nav.nav
      ```
-3. **Title Element**:
-   - Add the `<title>` inside the `<head>`:
+3. **Nesting Elements**:
+   - Use indentation for nesting.Example:
      ```
-     head
-       title Natours
+     header.header
+       nav.nav
+         a(href="#") Link
      ```
-   - The content of the `title` appears in the browser tab.
-4. **Body Element**:
-   - The `<body>` element is a sibling of `<head>` and is written at the same indentation level:
-     ```jsx
-     html
-       head
-         title Natours
-       body
-         h1 Welcome to Natours
-         p This is just some text.
+4. **Comments**:
+   - **Pug-specific Comments**: Start with `//`. These will not appear in the final HTML.Example:
      ```
+     // This is a Pug comment
+     ```
+   - **Visible Comments in Output**: Start with `//-`.Example:
+     ```
+     //- This is a visible comment in the HTML output
+     ```
+5. **Attributes**:
+   - Use parentheses after the element name.Example:
+     ```
+     a(href="https://example.com" target="_blank") Link
+     ```
+6. **Text Content**:
+   - Directly write the text after the tag or element.Example:
+     ```
+     h1 Welcome to the Page
+     p This is a paragraph.
+     ```
+7. **BEM Naming Convention** (optional, but mentioned):
 
----
+   - Use double underscores (`__`) for elements and single dashes () for modifiers.Example:
 
-### **Rendering the Template in the Browser**
-
-- Save the Pug file, render it, and check in the browser.
-- You will see:
-  - The structure (HTML elements like `<head>`, `<body>`) in the browser's developer tools.
-  - The page title in the browser tab.
-
----
-
-### **Including Additional Elements**
-
-1. **CSS Stylesheet**:
-   - In standard HTML, a `<link>` elsheets:
-     ```html
-     <link rel="stylesheet" href="style.css" />
      ```
-   - In Pug, attributes are added in parentheses after the element name:
-     ```
-     link(rel='stylesheet' href='style.css')
-     ```
-2. **Favicon**:
-   - Similar to including a CSS file, add a `<link>` for the favicon:
-     ```
-     link(rel='icon' href='favicon.ico')
+     div.block__element--modifier
+
      ```
 
----
-
-### **Attributes in Pug**
-
-- Attributes are written inside parentheses.
-- Syntax:
-  ```
-  element(attribute='value' anotherAttribute='value')
-  ```
-- Always use single quotes for values.
-
----
-
-### **Advantages of Pug Syntax**
-
-- No need for opening and closing tags.
-- Eliminates unnecessary clutter in the code.
-- Easy to read and write compared to traditional HTML.
-
----
-
-### **Best Practices**
-
-- Use consistent indentation (spaces are preferred over tabs).
-- Keep your code clean and organized for better readability.
-
----
-
----
-
-- **Pug Syntax:**
-  - **Indentation:** Defines the hierarchy of elements.
-  - **Attributes:**
-    - Defined within parentheses after the element name.
-    - Example: `link(rel='stylesheet' href='css/style.css')`
-  - **Variables:**
-    - Passed from Express using `res.render('base', { tour: 'The Forest Hiker', user: 'Jonas' });`
-    - Accessed in Pug using `=` (e.g., `h1= tour`)
-- **Code Types:**
-  - **Buffered Code:**
-    - Code that generates output (e.g., `h2= user.toUpperCase()`).
-    - Can include JavaScript expressions.
-  - **Unbuffered Code:**
-    - Code that does not generate output.
-    - Begins with (e.g., `const x = 9`).
-  - **Interpolation:**
-    - Used to insert variables within text.
-    - Example: `h1 Natours | #{tour}`
-
----
-
----
-
----
-
-### **1. Buffered Code**
-
-- **Definition**: Buffered code generates output directly into the template. It uses an equal sign `=` to indicate that the result of the expression should be displayed in the output HTML.
-- **Use Case**: Whenever you want to display dynamic data or evaluate an expression directly in the rendered HTML.
-- **Syntax**:
-  ```
-  h2= user.toUpperCase()
-  ```
-  This will render an `<h2>` element, and the content will be the value of `user.toUpperCase()`.
-- **Example**:
-  ```
-  html
-    body
-      - const user = "john doe"
-      h2= user.toUpperCase()
-  ```
-  **Output**:
-  ```html
-  <html>
-    <body>
-      <h2>JOHN DOE</h2>
-    </body>
-  </html>
-  ```
-- **Notes**: Buffered code can include JavaScript expressions like string methods, mathematical calculations, or function calls.
-
----
-
-### **2. Unbuffered Code**
-
-- **Definition**: Unbuffered code is JavaScript code that does not generate any output in the HTML. It begins with a dash `` and is often used to declare variables, perform calculations, or execute logic.
-- **Use Case**: When you need logic, variables, or calculations without displaying them in the output.
-- **Syntax**:
-  ```
-  - const x = 9
-  ```
-  This will execute the code but not display anything in the rendered HTML.
-- **Example**:
-  ```
-  html
-    body
-      - const user = "jane smith"
-      - const age = 25
-      h2= `Name: ${user}`
-      p Age: #{age}
-  ```
-  **Output**:
-  ```html
-  <html>
-    <body>
-      <h2>Name: jane smith</h2>
-      <p>Age: 25</p>
-    </body>
-  </html>
-  ```
-- **Notes**: Use unbuffered code for backend logic that does not directly affect the DOM.
-
----
-
-### **3. Interpolation**
-
-- **Definition**: Interpolation is a way to insert variables or expressions directly into text. It uses the syntax `#{expression}` to embed dynamic values within a line of text.
-- **Use Case**: To mix static text with dynamic data in a single element.
-- **Syntax**:
-  ```
-  h1 Welcome to #{tourName}
-  ```
-  This will embed the value of `tourName` in the heading text.
-- **Example**:
-  ```
-  - const tourName = "Natours"
-  - const location = "New York"
-  html
-    body
-      h1 Welcome to #{tourName}
-      p The tour starts in #{location}.
-  ```
-  **Output**:
-  ```html
-  <html>
-    <body>
-      <h1>Welcome to Natours</h1>
-      <p>The tour starts in New York.</p>
-    </body>
-  </html>
-  ```
-- **Advanced Interpolation**:
-  You can use expressions and calculations inside `#{}`.
-      ```
-      p Total Price: $#{price * 1.2} (including tax)
-      ```
-
-      **Output**:
-
-      ```html
-      <p>Total Price: $120 (including tax)</p>
-      ```
-
----
-
-### **Comparison of Buffered Code, Unbuffered Code, and Interpolation**
-
-| **Feature**  | **Buffered Code**                    | **Unbuffered Code**                | **Interpolation**                       |
-| ------------ | ------------------------------------ | ---------------------------------- | --------------------------------------- |
-| **Output**   | Generates HTML output.               | No HTML output.                    | Generates HTML output.                  |
-| **Syntax**   | `=` after the tag.                   | `-` before the JavaScript code.    | `#{expression}` inside text.            |
-| **Use Case** | Display dynamic data or expressions. | Perform logic or define variables. | Embed variables or expressions in text. |
-
----
+This summary covers the essential syntax you need for writing Pug templates effectively.
