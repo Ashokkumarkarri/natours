@@ -1,40 +1,90 @@
-# 008 Setting up the Project Structure
+## 009 Building the Tour Overview - Part 1
 
-### Notes: Refactoring and Organizing Code with PUG and MVC Architecture
+### Building the Tour Overview Page in Node.js
 
-1. **Understanding PUG Basics**:
-   - PUG templates help in creating dynamic views for web applications.
-   - Transitioning to an organized structure is essential for scalable and maintainable code.
-2. **Refactoring for MVC Architecture**:
-   - MVC (Model-View-Controller) separates application logic into three interconnected components:
-     - **Model**: Manages the data.
-     - **View**: Handles the user interface (UI).
-     - **Controller**: Manages the logic and interactions between the model and view.
-3. **Creating Routers and Controllers for Views**:
-   - A separate router file is created for view-related routes to build dynamic websites.
-   - This router organizes all the required routes for rendering views.
-4. **Steps to Set Up a Router**:
-   - Import Express: `const express = require('express');`
-   - Create a router instance: `const router = express.Router();`
-   - Define routes using `router.get()` for each view.
-   - Export the router module: `module.exports = router;`
-5. **Mounting the Router in the Main App**:
-   - Import the view router in the main application file (e.g., `app.js`).
-   - Mount the router:
+In this lecture, we focused on creating the **Tour Overview Page**, which will display a list of tours from our database. Currently, the page is empty, and the goal is to populate it with real content. Here’s a step-by-step breakdown of the process:
+
+---
+
+## Steps to Build the Tour Overview Page:
+
+1. **Get Tour Data from the Collection**
+   - We need to fetch all the tour data from the database collection using the **Tour Model**.
+   - This involves querying the database and retrieving all the records.
+2. **Build the Template**
+   - Create a Pug template to structure how the data will be displayed on the webpage.
+   - This step defines the visual layout but is handled separately from the controller logic.
+3. **Render the Template with Data**
+   - Combine the fetched tour data with the created template to generate the final dynamic webpage.
+   - Pass the data as an object to the template rendering function.
+
+---
+
+## Implementation in Code
+
+### Controller Logic:
+
+- Navigate to the `getOverview` controller function, which is responsible for handling requests to the overview page.
+- **Steps to Implement**:
+
+  1. **Import the Tour Model**:
+
      ```jsx
-     const viewRouter = require('./routes/viewRoutes');
-     app.use('/', viewRouter);
+     const Tour = require('../models/tourModel');
      ```
-6. **Refactoring Controller Functions**:
-   - Create a separate file for controllers (e.g., `viewsController.js`).
-   - Define functions for each route, such as `getOverview`:
+
+  2. **Use an Async Function**:
+
+     - Since database queries are asynchronous, mark the controller function as `async` and use a helper function like `catchAsync` to handle errors efficiently.
+
      ```jsx
-     exports.getOverview = (req, res) => {
-       res.status(200).render('overview');
-     };
+     exports.getOverview = catchAsync(async (req, res, next) => {
+       const tours = await Tour.find(); // Fetch all tours
+       res.status(200).render('overview', {
+         title: 'All Tours',
+         tours, // Pass tours data to the template
+       });
+     });
      ```
-   - Replace inline route logic with controller functions in the router file.
-7. **Adjusting Routes for Better UX**:
-   - Replace route names like `/overview` with `/` to serve the main page when the application loads.
-8. **Future Enhancements**:
-   - Replace placeholder logic in controller functions with actual data fetching and rendering.
+
+  3. **Retrieve Data**:
+     - Use Mongoose's `.find()` method to get all tour documents from the collection.
+  4. **Pass Data to Template**:
+     - Render the `overview` template and provide the tour data as part of the `locals` object.
+
+---
+
+## Building the Pug Template
+
+1. **Set Up the Overview Template**:
+
+   - Replace the placeholder in the `overview.pug` file with a proper layout.
+
+   ```
+   each tour in tours
+       .card
+           h3= tour.name
+           p= tour.summary
+   ```
+
+2. **Use Existing Static HTML as Reference**:
+   - Open the static `overview.html` file located in the `public` folder for guidance on how to structure the new template dynamically.
+   - Ensure the layout matches the static design but uses Pug syntax and dynamically injects data.
+
+---
+
+## Key Concepts Reinforced
+
+- **Reusability**:
+  - All the logic and models created earlier can now be reused seamlessly, demonstrating the importance of modularity.
+- **Dynamic Rendering**:
+  - Templates like `overview.pug` dynamically adapt based on the data passed to them.
+
+---
+
+## Final Thoughts
+
+By following these steps:
+
+- The **Tour Overview Page** fetches data from the database and dynamically displays it using Pug templates.
+- This process illustrates the seamless integration of backend data with frontend templates, a core concept in modern web development.
