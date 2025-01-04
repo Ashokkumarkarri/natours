@@ -1,51 +1,99 @@
-### **Including Templates in Node.js (Using Pug)**
+# 007 Extending Our Base Template with Blocks
 
-### **Purpose**
+### Notes on Using Extends in Pug Templates
 
-To simplify the structure of the code and keep the base layout clean, we can use a common feature in programming languages—**including one file within another**. This is particularly useful for repetitive components like headers and footers.
+### Introduction
 
-### **Steps to Include Templates**
-
-1. **Separate the Header and Footer Code**:
-   - Move the header code into a new file named `_header.pug`.
-   - Similarly, move the footer code into a new file named `_footer.pug`.
-   - Prefix files meant for inclusion with an underscore (e.g., `_header.pug`, `_footer.pug`) for clarity. This is similar to conventions in tools like **Sass**.
-2. **Adjust Indentation**:
-   - When copying and pasting code, the indentation might get disrupted. In Pug, indentation is critical as it defines the structure of the HTML.
-   - Use an extension like **Pug Beautify** in Visual Studio Code to automatically fix indentation:
-     - Install the Pug Beautify extension.
-     - Select all code (`Ctrl+A` on Windows or `Cmd+A` on Mac).
-     - Open the Command Palette (`Ctrl+Shift+P` or `Cmd+Shift+P`).
-     - Search for "Pug Beautify" and apply it to the selected code.
-3. **Include the Templates in the Base Layout**:
-   - Use the `include` keyword in Pug to insert the header and footer templates into the base layout.
-   - Example:
-     ```
-     pug
-     Copy code
-     include _header
-     include _footer
-
-     ```
-   - No need to specify the `.pug` extension when including files.
-4. **Verify the Output**:
-   - After making these changes, reload the application to ensure everything looks the same as before.
-   - If components like buttons or navigation items appear misplaced, check the indentation in the included files to ensure all elements are correctly nested.
+- Extends is one of the most **important** and **complex** features in Pug.
+- It allows reusing the same **base layout** for every page you want to render.
 
 ---
 
-### **Troubleshooting Common Issues**
+### Base Template and Content
 
-1. **Misaligned Elements**:
-   - Elements in the header (like navigation bars) may shift out of place if the indentation is incorrect.
-   - Ensure all nested elements (e.g., `<nav>`, `<div>`) are properly aligned and on the correct level.
+1. **Base Template Setup**
+   - A base template contains common elements like a **header** and **footer**.
+   - Individual pages should load **different content** while using the same base layout.
+2. **Page Examples**
+   - **Overview Page**: Displays all tours.
+   - **Tour Details Page**: Shows details for a specific tour.
 
 ---
 
-### **Benefits of Using Includes**
+### Implementing Routes for Pages
 
-- **Clean Code**: The base layout file becomes less cluttered and easier to manage.
-- **Reusability**: Header and footer templates can be reused across multiple pages.
-- **Scalability**: Simplifies updates—changes to the header or footer only need to be made in one place.
+1. **Overview Page Route**
+   - Add a route for `/overview`:
+     ```jsx
+     app.get('/overview', (req, res) => {
+       res.render('overview', { title: 'All Tours' });
+     });
+     ```
+   - Create a new Pug template named `overview.pug`.
+2. **Tour Details Page Route**
+   - Add a route for specific tours:
+     ```jsx
+     app.get('/tour', (req, res) => {
+       res.render('tour', { title: 'The Forest Hiker Tour' });
+     });
+     ```
+   - Create a Pug template named `tour.pug`.
 
-By following these steps, you can maintain a modular structure in your Node.js applications, making the codebase easier to manage and debug.
+---
+
+### Filling Content for Pages
+
+1. **Content-Specific Files**
+   - Each Pug file (`overview.pug` or `tour.pug`) will include **only the content** for that page (no header or footer).
+   - This content will be injected into the **base template** (called the **parent template**) using **extends**.
+2. **Extending the Base Template**
+
+   - Overview Page Example:
+
+     ```
+     extends base
+
+     block content
+         h1 Welcome to the Overview Page
+     ```
+
+---
+
+### Extending the Base Template
+
+1. **Defining a Block in the Base Template**
+   - Add a block in `base.pug`:
+     ```
+     block content
+         h1 This is a placeholder heading
+     ```
+   - Blocks act as placeholders where specific page content will be injected.
+2. **Overriding Content in a Page Template**
+
+   - Replace the placeholder content by extending the base template:
+
+     ```
+     extends base
+
+     block content
+         h1 All Tours Overview
+     ```
+
+   **Note** : `placeholder` is temporary or sample content used to mark where the actual content will go in the future.
+
+3. **How Extends Works**
+   - When a page like `overview.pug` is rendered:
+     - The **base template** is used as a skeleton.
+     - Content from the `overview.pug` file is injected into the `content` block.
+
+---
+
+### Key Notes
+
+- **Blocks** allow for customization while keeping a shared structure.
+- Use `extends` in Pug to connect page-specific templates with the base template.
+- Placeholder content in blocks helps during development but gets overridden in actual use.
+
+---
+
+This format should help you grasp and remember the process of using `extends` in Pug. Let me know if you want further elaboration on any point!
