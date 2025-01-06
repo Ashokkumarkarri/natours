@@ -1,82 +1,60 @@
-# 012 Building the Tour Page - Part
+# 013 Including a Map with Mapbox - Part 1
 
-## Quick Facts Section Recap
+### **Fixing a Bug in Tour Title**
 
-- Previously, we built the **Quick Facts** section using **mixins**.
-- Mixins allow reusable chunks of Pug code, making our templates modular and efficient.
-
----
-
-## Building the Guides Section
-
-1. **Dynamic Guide Generation**:
-   - The number of guides for each tour varies.
-   - Use a **loop** to dynamically create guide elements based on `tour.guides`.
-2. **Database Association**:
-   - `tour.guides` contains user IDs in the database.
-   - When populated using Mongoose, it contains user documents with properties like `name` and `photo`.
-3. **Guide Details**:
-   - Each guide needs:
-     - **Photo**: `images/users/{guide.photo}`
-     - **Name**: `guide.name`
-     - **Role**: Either "Lead guide" or "Tour gui.
-4. **Role Conditional**:
-   - Pug's built-in conditionals are limited, so use JavaScript if statements:
-     ```
-     - if guide.role === 'lead-guide'
-         Lead guide
-     - else if guide.role === 'guide'
-         Tour guide
-     ```
+- **Issue Identified**:
+  - While viewing the "Park Camper" tour page, the title incorrectly displays as "The Forest Hiker."
+  - This happens because the tour title is hardcoded as "The Forest Hiker" in the backend (`get tour handler`).
+- **Solution**:
+  - Replace the hardcoded title with a dynamic value from the tour data:
+    ```jsx
+    tour.name.toUpperCase();
+    ```
+  - This ensures the correct title is displayed for each tour.
 
 ---
 
-## Description Box
+### **Integrating a Map Using Mapbox**
 
-1. **Dynamic Tour Name**:
-   - Add the tour name dynamically using `tour.name`.
-2. **Handling Descriptions**:
-   - `tour.description` is a single string with paragraphs separated by newline characters (`\n`).
-   - Split the string into an array:
-     ```
-     - const paragraphs = tour.description.split('\n'
-     ```
-   - Loop through the array to create a paragraph for each element:
-     ```
-     each paragraph in paragraphs
-         p= paragrap
-     ```
+1. **Purpose**:
+   - Display all locations of a tour on a map within the website.
+2. **Library Used**:
+   - **Mapbox**: A front-end library that allows embedding interactive maps.
+3. **Development Approach**:
+   - Write client-side JavaScript to integrate Mapbox into the website.
+   - Embed this functionality within the tour page template.
 
 ---
 
-## Images Section
+### **Steps to Integrate Mapbox**
 
-1. **Dynamic Image Rendering**:
-   - Use a loop to render each image from `tour.images`.
-   - Image source format: `images/tours/{image}`.
-   - Add an **index** to distinguish between images using Pug's second loop variable:
-     ```
-     each image, i in tour.images
-         img(src=`images/tours/${image}`, class=`image-${i + 1}`)
-     ```
-2. **Indentation Matters**:
-   - Ensure proper nesting of elements (e.g., images inside their respective containers) for correct rendering.
+### 1. Prepare Client-Side Code
 
----
+- **Locate Public Assets**:
+  - Client-side resources like CSS, images, and JavaScript files are stored in the `public` folder.
+- **Create JavaScript File**:
+  - Add a new file named `mapbox.js` in the `public/js` folder.
+  - Include a basic script to test the integration:
+    ```jsx
+    console.log('Hello from the client side');
+    ```
 
-## Reviews Section
+### 2. Add Script to Templates
 
-1. **Populating Reviews**:
-   - Reviews are stored in `tour.reviews` as an array.
-   - Use Mongoose's `populate` method to retrieve related data (e.g., `user.name`, `user.photo`).
-2. **Review Card Design**:
-   - Create a **mixin** for the review card to simplify the template:
-     ```
-     mixin reviewCard(review)
-         .review
-             img(src=`images/users/${review.user.photo}`)
-             .review-content
-                 h4= review.user.name
-                 p= review.review
-     ```
-   - Use the mixin in the loop:
+- **Decide Placement**:
+  - The `mapbox.js` script should only load on the tour page, not globally.
+- **Extend Base Template**:
+  - Modify the base template to include a new block named `head`.
+    ```html
+    {% block head %}
+    <!-- Existing head content -->
+    {% endblock %
+    ```
+- **Append the Script in the Tour Template**:
+  - Use the `block append` feature to add the script without overwriting existing content:
+    ```html
+    {% block append head %}
+    <script src="js/mapbox.js"></script>
+    {% endblock %}
+    ```
+- **Alternative**: Use `block prepend` to insert the script at the beginning.
