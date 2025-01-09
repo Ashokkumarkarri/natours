@@ -1,158 +1,122 @@
-# 014 Including a Map with Mapbox - Part 2
+# 015 Building the Login Screen
 
-### Introduction
+## Adding Login Functionality to the Website
 
-- Let's continue building the map integration for our project.
-- For this, we will use **Mapbox** instead of Google Maps.
-  - Google Maps recently began requiring a credit card to use its services, which isn't ideal for a course like this.
-  - Mapbox is a great alternative with excellent features and documentation.
+### 1. Overview
 
-### Setting Up Mapbox
+In the upcoming lectures, we will implement the **login functionality** for our website. The first step is to render a **login screen** to make it easy for users to log in.
 
-1. **Getting Started:**
-   - Visit the [Mapbox website](https://mapbox.com/) to begin.
-   - Click on the "Start Building" button to create a new account.
-   - If you don't already have an account, sign up for a free account.
-   - Once registered, you'll be directed to the dashboard.
-2. **Dashboard Overview:**
-   - The dashboard might look slightly different depending on when you access it, but the main functionalities remain the same.
-   - Familiarize yourself with the interface and locate essential sections like API keys and tutorials.
+---
 
-### Why Use Mapbox?
+### 2. Challenge: Creating the Login Route
 
-- Mapbox offers robust documentation, making it beginner-friendly.
-- Its features allow customization and scalability for various projects.
-- It's free to start, without requiring sensitive financial details upfront.
+**Objective:** Practice creating routes, controllers, and templates by implementing the `/login` route.
 
-### Implementing Mapbox in Your Project
+**Steps:**
 
-1.  **Accessing the API Key:**
-    - After logging in, retrieve your API key from the dashboard. This key is essential for integrating Mapbox into your project.
-2.  **Integration Steps:**
-    - Add the Mapbox library to your project.
-    Example (HTML):
-    ` <script src='https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.13.0/mapbox-gl.css' rel='stylesheet' />
-    `
-    - Use the API key to initialize the map in your application.
-3.  **Code Example:**
+1. Create a `/login` route in the router.
+2. Write a corresponding **controller function** to handle the route.
+3. Create a **template** to render the login screen.
 
-    ```
-    mapboxgl.accessToken = 'YOUR_ACCESS_TOKEN';
-    const map = new mapboxgl.Map({
-      container: 'map', // HTML container id
-      style: 'mapbox://styles/mapbox/streets-v11', // Map style URL
-      center: [longitude, latitude], // Starting position [lng, lat]
-      zoom: 9 // Starting zoom level
+The login template is straightforward and consists of static HTML. No dynamic variables need to be passed into it. A pre-existing template in the folder can be reused for this purpose.
+
+---
+
+### 3. Implementing the `/login` Route
+
+**Code Implementation:**
+
+```jsx
+// Define the login route
+router.get('/login', loginController.getLoginForm);
+```
+
+- The route is defined as `/login`.
+- The handler for this route is `getLoginForm`, which will be created in the `loginController`.
+
+---
+
+### 4. Creating the `getLoginForm` Controller
+
+**Controller Logic:**
+
+```jsx
+exports.getLoginForm = (req, res, next) => {
+  try {
+    res.status(200).render('login', {
+      title: 'Log into your account',
     });
-    ```
-
----
-
----
-
-# code explanation
-
-### **1. Parsing the Location Data**
-
-```jsx
-const locations = JSON.parse(document.getElementById('map').dataset.locations);
-console.log(locations);
+  } catch (err) {
+    next(err); // Always pass errors to the next middleware
+  }
+};
 ```
 
-- **`document.getElementById('map').dataset.locations`**: Retrieves the `data-locations` attribute from an HTML element with the ID `map`. This attribute contains location data as a JSON string.
-- **`JSON.parse`**: Converts the JSON string into a JavaScript object (or array) for easy manipulation.
-- **`console.log(locations)`**: Logs the parsed locations to the console for debugging.
+- **Purpose:** Render the `login` template with a custom title.
+- The title, "Log into your account," will be passed to the base template to display in the `<title>` HTML element.
+
+**Important Note:**
+
+When using async functions wrapped in a utility like `catchAsync`, always include the `next` parameter to handle errors properly.
 
 ---
 
-### **2. Initializing the Map**
+### 5. Creating the Login Template
 
-```jsx
-mapboxgl.accessToken =
-  'pk.eyJ1IjoiYXNob2trdW1hcmthcnJpIiwiYSI6ImNtNW45eTk5dDA3bjcycXI0NGw1dDE3a3UifQ.WGthlWARGmAPnZdgW7GBtg';
-const map = new mapboxgl.Map({
-  container: 'map', // container ID
-  style: 'mapbox://styles/ashokkumarkarri/cm5nu3wk000e901qyfsx50do3', // style URL
-  scrollZoom: false,
-});
+**Steps:**
+
+1. Locate the template folder.
+2. Open an existing HTML/Pug template, copy its structure, and create a new file named `login.pug`.
+3. Extend the base template and define a block for content.
+
+**Code Example (Pug):**
+
+```
+pug
+Copy code
+extends base
+block content
+  h1 Log into your account
+  form(action="/login", method="POST")
+    label(for="username") Username:
+    input(type="text", id="username", name="username")
+    label(for="password") Password:
+    input(type="password", id="password", name="password")
+    button(type="submit") Login
 ```
 
-- **`mapboxgl.accessToken`**: Provides the access token required to use Mapbox's API.
-- **`container: 'map'`**: Specifies the HTML element where the map will be rendered (element with ID `map`).
-- **`style`**: Defines the visual style of the map, using a custom Mapbox style URL.
-- **`scrollZoom: false`**: Disables map zooming when scrolling on the page.
-
 ---
 
-### **3. Setting Up Map Bounds**
+### 6. Adding Links to the Login Page
 
-```jsx
-const bounds = new mapboxgl.LngLatBounds();
+**Modifications to Navigation:**
+
+- Replace the existing **button elements** for "Login" and "Sign Up" with **anchor (`<a>`) tags** to allow navigation using the `href` attribute.
+
+**Updated Code:**
+
+```html
+<a href="/login" class="btn">Login</a> <a href="/signup" class="btn">Sign Up</a>
 ```
 
-- **`LngLatBounds`**: Creates an object that represents the geographic bounds of the map. This will be used to ensure all markers fit within the map view.
+---
+
+### 7. Optional: Implementing a Sign-Up Page
+
+The process for creating a sign-up page is similar to the login page:
+
+- Define a `/signup` route.
+- Create a `getSignupForm` controller to render the sign-up page.
+- Design a corresponding template for user registration.
+
+This exercise is left as optional to avoid redundancy.
 
 ---
 
-### **4. Adding Markers and Popups**
+### 8. Summary
 
-```jsx
-locations.forEach((loc) => {
-  const el = document.createElement('div');
-  el.className = 'marker'; // It refers to a CSS class for custom marker styling.
-  new mapboxgl.Marker({
-    element: el,
-    anchor: 'bottom',
-  })
-    .setLngLat(loc.coordinates) // Set marker's position using longitude and latitude.
-    .addTo(map);
+- We successfully created a `/login` route, controller, and template.
+- The `login` page is now accessible via a link in the navigation bar.
+- This foundation sets the stage for adding more advanced login features like authentication.
 
-  new mapboxgl.Popup({
-    offset: 30, // Adjusts popup position relative to the marker.
-  })
-    .setLngLat(loc.coordinates) // Set popup's position.
-    .setHTML(`<p>Day ${loc.day}: ${loc.description}</p>`) // Display dynamic content in the popup.
-    .addTo(map);
-
-  bounds.extend(loc.coordinates); // Extend bounds to include this marker's coordinates.
-});
-```
-
-- **`forEach`**: Loops through each location in the `locations` array.
-- **`document.createElement('div')`**: Creates a custom HTML element for the marker.
-- **`new mapboxgl.Marker`**: Creates a marker and attaches it to the map at the specified coordinates.
-- **`new mapboxgl.Popup`**: Creates a popup displaying the location's details (`day` and `description`).
-- **`bounds.extend(loc.coordinates)`**: Expands the map bounds to include the current location's coordinates.
-
----
-
-### **5. Adjusting the Map to Fit Bounds**
-
-```jsx
-map.fitBounds(bounds, {
-  padding: {
-    top: 200,
-    bottom: 150,
-    left: 200,
-    right: 200,
-  },
-});
-```
-
-- **`fitBounds`**: Adjusts the map view to include all markers within the specified bounds.
-- **`padding`**: Adds padding around the map to ensure markers and popups don't overlap the map edges.
-
----
-
-### **How It All Comes Together**
-
-1. Fetches and parses location data dynamically from the HTML.
-2. Initializes a Mapbox map with a custom style and disabled scroll zoom.
-3. Iterates through location data to:
-   - Add markers with custom styling.
-   - Attach popups with details about each location.
-   - Extend the map's bounds to include all locations.
-4. Fits the map to display all markers with appropriate padding.
-
-This setup ensures a visually appealing and interactive map displaying all provided locations. Let me know if you need further clarification or assistance!
+Feel free to revisit the code and try implementing the sign-up page or customizing the login form further.

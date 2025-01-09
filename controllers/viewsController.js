@@ -31,3 +31,15 @@ exports.getTour = async (req, res) => {
     tour: tour,
   });
 };
+
+exports.getLoginForm = (req, res) => {
+  res.status(200).render('login', {
+    title: 'Log into your Account',
+  });
+};
+
+exports.getSignUpForm = (req, res) => {
+  res.status(200).render('signup', {
+    title: 'Sign Up your Account',
+  });
+};
