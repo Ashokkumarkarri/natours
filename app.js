@@ -6,6 +6,7 @@ const mongoSanitize = require('express-mongo-sanitize');
 const xss = require('xss-clean');
 const hpp = require('hpp');
 const path = require('path'); //core module, built in module, we use path module to manipulate the path names.
+const cookieParser = require('cookie-parser');
 
 // const { execArgv } = require('process');
 const AppError = require('./utils/appError');
@@ -46,6 +47,7 @@ app.use('/api', limiter);
 //Body parser, reading data from body into req.body
 //when body larger than 10kb will not be accepted
 app.use(express.json({ limit: '10kb' })); //middleware
+app.use(cookieParser()); //parses the data from cookies
 
 //Data sanitization against NoSQL query injection
 app.use(mongoSanitize());
@@ -70,7 +72,7 @@ app.use(
 //Testing middleware
 app.use((req, res, next) => {
   req.requestTime = new Date().toISOString();
-  console.log(req.header);
+  console.log(req.cookies);
   next();
 });
 

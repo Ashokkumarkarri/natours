@@ -1,122 +1,167 @@
-# 015 Building the Login Screen
+# 016
 
-## Adding Login Functionality to the Website
+### **Implementing the Login Functionality in Node.js**
 
-### 1. Overview
+### **Overview**
 
-In the upcoming lectures, we will implement the **login functionality** for our website. The first step is to render a **login screen** to make it easy for users to log in.
+In this section, we will connect the front-end login functionality to the back-end API that we built earlier. The objective is to allow users to log in to the website by making HTTP requests to the login API. This process involves multiple steps, which we will cover systematically.
 
----
+When a user logs in, the API sends back a cookie that the browser automatically stores. This cookie is crucial as it gets sent along with every subsequent request, forming the backbone of our authentication system.
 
-### 2. Challenge: Creating the Login Route
-
-**Objective:** Practice creating routes, controllers, and templates by implementing the `/login` route.
-
-**Steps:**
-
-1. Create a `/login` route in the router.
-2. Write a corresponding **controller function** to handle the route.
-3. Create a **template** to render the login screen.
-
-The login template is straightforward and consists of static HTML. No dynamic variables need to be passed into it. A pre-existing template in the folder can be reused for this purpose.
+Since we are working on the client side, all the logic will be written in JavaScript and integrated with the front-end.
 
 ---
 
-### 3. Implementing the `/login` Route
+### **Step-by-Step Implementation**
 
-**Code Implementation:**
+### **1. Creating the Login Script**
+
+1. Navigate to the `public/js` directory in your project.
+2. Create a new file called `login.js`.This file will contain the JavaScript logic for handling the login process.
+
+### **2. Adding an Event Listener for Form Submission**
+
+- First, select the login form using `document.querySelector` by targeting its class or ID.
+- Attach an `eventListener` for the `submit` event to capture when the user submits the form.
 
 ```jsx
-// Define the login route
-router.get('/login', loginController.getLoginForm);
+document
+  .querySelector('.form-class')
+  .addEventListener('submit', function (event) {
+    event.preventDefault(); // Prevents page reload on form submission
+  });
 ```
 
-- The route is defined as `/login`.
-- The handler for this route is `getLoginForm`, which will be created in the `loginController`.
+- The `event.preventDefault()` method ensures that the form does not reload the page, allowing us to handle the submission entirely via JavaScript.
 
 ---
 
-### 4. Creating the `getLoginForm` Controller
+### **3. Extracting Form Data**
 
-**Controller Logic:**
+To get the user's input (email and password):
+
+- Use `document.getElementById` to target the input fields by their IDs.
+- Access the values of these fields using the `.value` property.
 
 ```jsx
-exports.getLoginForm = (req, res, next) => {
+const email = document.getElementById('email').value;
+const password = document.getElementById('password').value;
+```
+
+---
+
+### **4. Creating a Login Function**
+
+Create a separate function called `login` to handle the actual login process. This function will accept `email` and `password` as parameters.
+
+```jsx
+const login = async (email, password) => {
+  console.log(email, password); // Logs input values for testing
+};
+```
+
+To ensure the function is properly called:
+
+- Pass the extracted `email` and `password` values to the `login` function when the form is submitted.
+
+---
+
+### **5. Integrating Axios for HTTP Requests**
+
+To interact with the API, use **Axios**, a popular JavaScript library for making HTTP requests.
+
+### **Using Axios via CDN**
+
+- Add Axios to your project by including it from a CDN in your HTML file:
+
+```html
+<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+```
+
+This will make the Axios object globally available for use.
+
+### **Making the POST Request**
+
+- Use Axios to send the user's email and password to the login API.
+- Include the API endpoint URL and the data (email and password) in the request.
+
+```jsx
+const login = async (email, password) => {
   try {
-    res.status(200).render('login', {
-      title: 'Log into your account',
+    const result = await axios({
+      method: 'POST',
+      url: 'http://localhost:8000/api/v1/users/login',
+      data: {
+        email,
+        password,
+      },
     });
+    console.log(result.data); // Logs the response data
   } catch (err) {
-    next(err); // Always pass errors to the next middleware
+    console.error(err.response.data); // Handles errors
   }
 };
 ```
 
-- **Purpose:** Render the `login` template with a custom title.
-- The title, "Log into your account," will be passed to the base template to display in the `<title>` HTML element.
-
-**Important Note:**
-
-When using async functions wrapped in a utility like `catchAsync`, always include the `next` parameter to handle errors properly.
-
 ---
 
-### 5. Creating the Login Template
+### **6. Handling Errors**
 
-**Steps:**
+- Use a `try-catch` block to handle potential errors during the request.
+- If the API sends back an error (e.g., wrong credentials), Axios automatically throws an error, which can be caught in the `catch` block.
 
-1. Locate the template folder.
-2. Open an existing HTML/Pug template, copy its structure, and create a new file named `login.pug`.
-3. Extend the base template and define a block for content.
-
-**Code Example (Pug):**
-
-```
-pug
-Copy code
-extends base
-block content
-  h1 Log into your account
-  form(action="/login", method="POST")
-    label(for="username") Username:
-    input(type="text", id="username", name="username")
-    label(for="password") Password:
-    input(type="password", id="password", name="password")
-    button(type="submit") Login
+```jsx
+try {
+  // Successful request logic
+} catch (err) {
+  console.error('Error:', err.response.data.message); // Logs specific error message
+}
 ```
 
 ---
 
-### 6. Adding Links to the Login Page
+### **7. Storing and Using Cookies**
 
-**Modifications to Navigation:**
+- After a successful login, the API sends a cookie containing a **JSON Web Token (JWT)**.
+- This cookie gets automatically stored in the browser.
+- To view stored cookies:
+  - Open developer tools in Chrome (right-click > Inspect).
+  - Navigate to **Application > Cookies**.
 
-- Replace the existing **button elements** for "Login" and "Sign Up" with **anchor (`<a>`) tags** to allow navigation using the `href` attribute.
-
-**Updated Code:**
-
-```html
-<a href="/login" class="btn">Login</a> <a href="/signup" class="btn">Sign Up</a>
-```
+Cookies are automatically sent with every request, enabling authentication for protected routes.
 
 ---
 
-### 7. Optional: Implementing a Sign-Up Page
+### **8. Using Middleware for Cookie Parsing**
 
-The process for creating a sign-up page is similar to the login page:
+On the back-end, install and use the `cookie-parser` middleware to access cookies in incoming requests.
 
-- Define a `/signup` route.
-- Create a `getSignupForm` controller to render the sign-up page.
-- Design a corresponding template for user registration.
+1. Install the package:
 
-This exercise is left as optional to avoid redundancy.
+   ```bash
+   npm install cookie-parser
+   ```
+
+2. Use it in your Express app:
+
+   ```jsx
+   const cookieParser = require('cookie-parser');
+   app.use(cookieParser());
+   ```
 
 ---
 
-### 8. Summary
+### **Key Points to Remember**
 
-- We successfully created a `/login` route, controller, and template.
-- The `login` page is now accessible via a link in the navigation bar.
-- This foundation sets the stage for adding more advanced login features like authentication.
+1. **Prevent Default Behavior**: Use `event.preventDefault()` to manage form submission via JavaScript.
+2. **Axios for HTTP Requests**: Simplifies API interaction and error handling.
+3. **JWT and Cookies**: These are essential for maintaining authentication state.
+4. **Middleware**: `cookie-parser` is used to parse and manage cookies on the back-end.
 
-Feel free to revisit the code and try implementing the sign-up page or customizing the login form further.
+---
+
+### **Next Steps**
+
+- Bundle all JavaScript files into a single file for better performance and maintainability.
+- Enhance error handling to provide user-friendly feedback on login failures.
+- Transition the development environment to HTTPS for secure communication.
