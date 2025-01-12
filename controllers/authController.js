@@ -124,6 +124,36 @@ exports.protect = catchAsync(async (req, res, next) => {
   next();
 });
 
+//Only for rendered pages, there will be no errors
+//we will check if user logged in or not
+//we also have protect middleware to check if user loged in or not, but that protect middleware is only for proteced route. but this middleware will run for all requests.
+exports.isLoggedIn = catchAsync(async (req, res, next) => {
+  if (req.cookies.jwt) {
+    //1)Verification token
+    const decoded = await promisify(jwt.verify)(
+      req.cookies.jwt,
+      process.env.JWT_SECRET,
+    );
+    // console.log(decoded);
+
+    //2)check if user still exists
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) {
+      return next();
+    }
+
+    //3)check if user change password after the token was issues
+    if (currentUser.changedPasswordAfter(decoded.iat)) {
+      return next();
+    }
+
+    //There is a Logged in USER
+    res.locals.user = currentUser; // what ever we mention here, we can access that in our PUG template. Ever pug template has access to this variable "res.locals"
+    return next();
+  }
+  next(); //if there is no cookies the next middleware will be called.
+});
+
 // Middleware to restrict actions based on user roles
 exports.restrictTo = (...roles) => {
   //...roles : rest parameter syntax

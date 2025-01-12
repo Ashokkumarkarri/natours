@@ -1,167 +1,169 @@
-# 016
-
-### **Implementing the Login Functionality in Node.js**
-
-### **Overview**
-
-In this section, we will connect the front-end login functionality to the back-end API that we built earlier. The objective is to allow users to log in to the website by making HTTP requests to the login API. This process involves multiple steps, which we will cover systematically.
-
-When a user logs in, the API sends back a cookie that the browser automatically stores. This cookie is crucial as it gets sent along with every subsequent request, forming the backbone of our authentication system.
-
-Since we are working on the client side, all the logic will be written in JavaScript and integrated with the front-end.
+# 017 Logging in Users with Our API - Part 2
 
 ---
 
-### **Step-by-Step Implementation**
+## Building Login Functionality - Part 2
 
-### **1. Creating the Login Script**
-
-1. Navigate to the `public/js` directory in your project.
-2. Create a new file called `login.js`.This file will contain the JavaScript logic for handling the login process.
-
-### **2. Adding an Event Listener for Form Submission**
-
-- First, select the login form using `document.querySelector` by targeting its class or ID.
-- Attach an `eventListener` for the `submit` event to capture when the user submits the form.
-
-```jsx
-document
-  .querySelector('.form-class')
-  .addEventListener('submit', function (event) {
-    event.preventDefault(); // Prevents page reload on form submission
-  });
-```
-
-- The `event.preventDefault()` method ensures that the form does not reload the page, allowing us to handle the submission entirely via JavaScript.
+In this session, we focus on conditionally rendering parts of our web page based on the user’s login status. This involves creating middleware to identify if a user is logged in and using that information to render dynamic elements like login/logout buttons or user menus on the frontend.
 
 ---
 
-### **3. Extracting Form Data**
+## **Objective**
 
-To get the user's input (email and password):
+1. Render **login** and **sign-up** buttons if the user is **not logged in**.
+2. Render a **user menu** and **logout button** if the user **is logged in**.
 
-- Use `document.getElementById` to target the input fields by their IDs.
-- Access the values of these fields using the `.value` property.
+To achieve this, we will:
 
-```jsx
-const email = document.getElementById('email').value;
-const password = document.getElementById('password').value;
-```
+- Create middleware to detect the login status of the user.
+- Use the middleware to dynamically adjust the rendered content of our web page.
 
 ---
 
-### **4. Creating a Login Function**
+## **How Does the Template Know the User’s Login Status?**
 
-Create a separate function called `login` to handle the actual login process. This function will accept `email` and `password` as parameters.
+To determine whether the user is logged in, we need a middleware function that:
 
-```jsx
-const login = async (email, password) => {
-  console.log(email, password); // Logs input values for testing
-};
-```
+1. **Verifies if a token exists in the cookie**.
+2. **Validates the token**.
+3. **Checks if the user exists** and whether their password was recently changed.
+4. If all conditions are met, **provides the user’s details to the templates** for rendering the dynamic content.
 
-To ensure the function is properly called:
-
-- Pass the extracted `email` and `password` values to the `login` function when the form is submitted.
+This middleware will **run for every request** made to the rendered website.
 
 ---
 
-### **5. Integrating Axios for HTTP Requests**
+## **Implementing Middleware in `authController`**
 
-To interact with the API, use **Axios**, a popular JavaScript library for making HTTP requests.
+### **Creating the `isLoggedIn` Middleware**
 
-### **Using Axios via CDN**
+The new middleware function, `isLoggedIn`, is designed for rendered pages. It doesn’t protect routes or throw errors but ensures the backend identifies if the user is logged in.
 
-- Add Axios to your project by including it from a CDN in your HTML file:
+### **Steps to Create the Middleware**
 
-```html
-<script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-```
+1. **Check for Token in Cookies**
+   - Unlike API routes, which rely on tokens in headers, rendered pages send tokens in cookies.
+   - Retrieve the token from `req.cookies.jwt`.
+2. **Verify the Token**
+   - Use `jwt.verify()` to validate the token.
+   - If invalid, proceed to the next middleware without an error.
+3. **Check User Existence**
+   - Query the database to confirm the user associated with the token still exists.
+4. **Check Password Change**
+   - Confirm the user hasn’t changed their password after the token was issued.
+5. **Pass User Data to Templates**
+   - If all checks pass, store the user’s details in `res.locals.user`.
+   - Templates can now access `user` dynamically.
+6. **Handle No Token Scenario**
+   - If no token exists, immediately call `next()` to proceed without setting `res.locals.user`.
 
-This will make the Axios object globally available for use.
+---
 
-### **Making the POST Request**
-
-- Use Axios to send the user's email and password to the login API.
-- Include the API endpoint URL and the data (email and password) in the request.
+### **Code Example**
 
 ```jsx
-const login = async (email, password) => {
+exports.isLoggedIn = async (req, res, next) => {
+  if (!req.cookies.jwt) return next(); // No token, move to the next middleware.
+
   try {
-    const result = await axios({
-      method: 'POST',
-      url: 'http://localhost:8000/api/v1/users/login',
-      data: {
-        email,
-        password,
-      },
-    });
-    console.log(result.data); // Logs the response data
+    // 1. Verify the token
+    const decoded = await promisify(jwt.verify)(
+      req.cookies.jwt,
+      process.env.JWT_SECRET,
+    );
+
+    // 2. Check if user exists
+    const currentUser = await User.findById(decoded.id);
+    if (!currentUser) return next();
+
+    // 3. Check if password has changed after token issue
+    if (currentUser.changedPasswordAfter(decoded.iat)) return next();
+
+    // 4. Pass user to templates
+    res.locals.user = currentUser;
+    return next();
   } catch (err) {
-    console.error(err.response.data); // Handles errors
+    return next(); // Move on if any error occurs
   }
 };
 ```
 
 ---
 
-### **6. Handling Errors**
+## **Applying Middleware to Routes**
 
-- Use a `try-catch` block to handle potential errors during the request.
-- If the API sends back an error (e.g., wrong credentials), Axios automatically throws an error, which can be caught in the `catch` block.
+To ensure all rendered pages have access to the user’s login status:
+
+- Apply `isLoggedIn` middleware to all routes in `viewRoutes`.
+
+### **Code Example**
 
 ```jsx
-try {
-  // Successful request logic
-} catch (err) {
-  console.error('Error:', err.response.data.message); // Logs specific error message
-}
+router.use(authController.isLoggedIn);
 ```
 
----
-
-### **7. Storing and Using Cookies**
-
-- After a successful login, the API sends a cookie containing a **JSON Web Token (JWT)**.
-- This cookie gets automatically stored in the browser.
-- To view stored cookies:
-  - Open developer tools in Chrome (right-click > Inspect).
-  - Navigate to **Application > Cookies**.
-
-Cookies are automatically sent with every request, enabling authentication for protected routes.
+This ensures that `isLoggedIn` runs before any route handlers, making `res.locals.user` available in all templates.
 
 ---
 
-### **8. Using Middleware for Cookie Parsing**
+## **Using the User Data in Templates**
 
-On the back-end, install and use the `cookie-parser` middleware to access cookies in incoming requests.
+### **Dynamic Rendering with Pug**
 
-1. Install the package:
+Using the `user` variable in Pug templates allows conditional rendering based on login status.
 
-   ```bash
-   npm install cookie-parser
-   ```
+### **Example: Conditional Rendering in the Header**
 
-2. Use it in your Express app:
+```
+if user
+  // User is logged in
+  li.nav-item
+    a.nav-link.logout Log out
+    span Welcome #{user.name.split(' ')[0]}!
+    img(src=`/img/users/${user.photo}` alt=`${user.name}`)
+else
+  // User is not logged in
+  li.nav-item
+    a.nav-link(href='/login') Login
+  li.nav-item
+    a.nav-link(href='/signup') Sign Up
+```
 
-   ```jsx
-   const cookieParser = require('cookie-parser');
-   app.use(cookieParser());
-   ```
+- **Logic**:
+  - If `user` exists, display their name, profile picture, and a logout button.
+  - If not, show login and signup options.
+- **Note**: To display only the first name, we split `user.name` by spaces and use the first element.
 
 ---
 
-### **Key Points to Remember**
+## **Testing the Functionality**
 
-1. **Prevent Default Behavior**: Use `event.preventDefault()` to manage form submission via JavaScript.
-2. **Axios for HTTP Requests**: Simplifies API interaction and error handling.
-3. **JWT and Cookies**: These are essential for maintaining authentication state.
-4. **Middleware**: `cookie-parser` is used to parse and manage cookies on the back-end.
+1. **Login Flow**:
+   - Log in as a user.
+   - Verify the cookie is set.
+   - Reload the page to see the user’s name and profile picture.
+2. **Logout Flow**:
+   - Delete the cookie to simulate logging out.
+   - Reload the page to revert to the default state.
 
 ---
 
-### **Next Steps**
+## **Handling Errors**
 
-- Bundle all JavaScript files into a single file for better performance and maintainability.
-- Enhance error handling to provide user-friendly feedback on login failures.
-- Transition the development environment to HTTPS for secure communication.
+1. **Duplicate Middleware Execution**:
+   - Ensure `next()` is called only once. Avoid multiple calls by returning immediately after `next()`.
+2. **Token or User Issues**:
+   - If token verification or user checks fail, skip setting `res.locals.user` and move on.
+
+---
+
+## **Key Takeaways**
+
+1. Middleware can dynamically enrich the data available to templates, enabling conditional rendering.
+2. `res.locals` is a powerful way to pass variables to templates globally.
+3. Cookies are the preferred method for transferring tokens in rendered pages.
+4. Proper error handling and flow control in middleware prevent bugs and ensure smooth functionality.
+
+---
+
+By following these steps, you can implement a robust login system that dynamically adapts to user states and provides a seamless experience on the frontend.
