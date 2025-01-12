@@ -1,169 +1,314 @@
-# 017 Logging in Users with Our API - Part 2
+# **Node.js Frontend Integration: Alerts and Login Functionality**
+
+This session is focused on integrating alerts and login functionality in a Node.js application. We modularize the code for maintainability and use Parcel for bundling files to streamline frontend development.
+
+- **What Does Modularize Mean?**
+  - Breaking code into smaller, reusable pieces (modules).
+  - Each module handles a specific functionality (e.g., alerts, login, map display).
+- **Why Modularize?**
+  - **Improved Readability:** Code is easier to understand and maintain.
+  - **Reusability:** Functions can be reused across different parts of the application.
+  - **Isolation:** Each module works independently, reducing bugs.
+  - **Scalability:** Adding new features becomes simpler.
+- **How to Modularize?**
+
+  - Use ES6 modules: `export` and `import` keywords.
+  - Example:
+
+    ```jsx
+    // alert.js
+    export const showAlert = (type, msg) => {
+      /* alert logic */
+    };
+
+    // login.js
+    import { showAlert } from './alert';
+    ```
+
+- **Role of Parcel Bundler**
+  - Combines all modules into a single file for production use.
+  - Benefits:
+    - Automatically resolves dependencies.
+    - Optimizes the code for browsers.
+- **Steps for Parcel Setup**
+
+  - Install Parcel:
+    ```bash
+    npm install parcel-bundler --save-dev
+    ```
+  - Add scripts to `package.json`:
+
+    ```json
+    "scripts": {
+      "watch:js": "parcel watch src/index.js --out-dir dist --out-file bundle.js",
+      "build:js": "parcel build src/index.js --out-dir dist --out-file bundle.js"
+    }
+
+    ```
+
+  - Run Parcel:
+    ```bash
+    npm run watch:js
+    ```
+
+- **Conclusion**
+  - Modularizing and bundling with tools like Parcel ensures maintainable, scalable, and browser-compatible code.
 
 ---
 
-## Building Login Functionality - Part 2
+## **1. Purpose of Dynamic Alerts**
 
-In this session, we focus on conditionally rendering parts of our web page based on the user’s login status. This involves creating middleware to identify if a user is logged in and using that information to render dynamic elements like login/logout buttons or user menus on the frontend.
+### **What are Alerts?**
 
----
+Alerts are small messages displayed to users to provide feedback on their actions. For example:
 
-## **Objective**
+- **Success Alert:** "Logged in successfully!"
+- **Error Alert:** "Incorrect email or password."
 
-1. Render **login** and **sign-up** buttons if the user is **not logged in**.
-2. Render a **user menu** and **logout button** if the user **is logged in**.
+### **Why Use Alerts?**
 
-To achieve this, we will:
-
-- Create middleware to detect the login status of the user.
-- Use the middleware to dynamically adjust the rendered content of our web page.
-
----
-
-## **How Does the Template Know the User’s Login Status?**
-
-To determine whether the user is logged in, we need a middleware function that:
-
-1. **Verifies if a token exists in the cookie**.
-2. **Validates the token**.
-3. **Checks if the user exists** and whether their password was recently changed.
-4. If all conditions are met, **provides the user’s details to the templates** for rendering the dynamic content.
-
-This middleware will **run for every request** made to the rendered website.
+1. **Immediate Feedback:** Users instantly know the result of their action.
+2. **User Experience:** Alerts improve the interface by clearly communicating success or failure.
+3. **Customizable:** Alerts can be styled and programmed to disappear after a few seconds, keeping the interface clean.
 
 ---
 
-## **Implementing Middleware in `authController`**
+## **2. Managing Alerts in Code**
 
-### **Creating the `isLoggedIn` Middleware**
+To handle alerts effectively, we create a separate module (`alert.js`) for:
 
-The new middleware function, `isLoggedIn`, is designed for rendered pages. It doesn’t protect routes or throw errors but ensures the backend identifies if the user is logged in.
-
-### **Steps to Create the Middleware**
-
-1. **Check for Token in Cookies**
-   - Unlike API routes, which rely on tokens in headers, rendered pages send tokens in cookies.
-   - Retrieve the token from `req.cookies.jwt`.
-2. **Verify the Token**
-   - Use `jwt.verify()` to validate the token.
-   - If invalid, proceed to the next middleware without an error.
-3. **Check User Existence**
-   - Query the database to confirm the user associated with the token still exists.
-4. **Check Password Change**
-   - Confirm the user hasn’t changed their password after the token was issued.
-5. **Pass User Data to Templates**
-   - If all checks pass, store the user’s details in `res.locals.user`.
-   - Templates can now access `user` dynamically.
-6. **Handle No Token Scenario**
-   - If no token exists, immediately call `next()` to proceed without setting `res.locals.user`.
+1. **Showing Alerts:** Display success or error messages dynamically.
+2. **Hiding Alerts:** Remove existing alerts from the page after a set duration or before displaying a new one.
 
 ---
 
-### **Code Example**
+### **Code: `alert.js`**
 
 ```jsx
-exports.isLoggedIn = async (req, res, next) => {
-  if (!req.cookies.jwt) return next(); // No token, move to the next middleware.
+// Function to hide an existing alert
+export const hideAlert = () => {
+  const el = document.querySelector('.alert'); // Select alert element
+  if (el) el.parentElement.removeChild(el); // Remove alert from DOM
+};
 
+// Function to display an alert
+// Parameters:
+// - `type`: Either 'success' (green alert) or 'error' (red alert)
+// - `msg`: Message to display inside the alert
+export const showAlert = (type, msg) => {
+  hideAlert(); // Ensure no duplicate alerts exist
+  const markup = `<div class="alert alert--${type}">${msg}</div>`; // HTML for the alert
+  document.querySelector('body').insertAdjacentHTML('afterbegin', markup); // Add alert to DOM
+  window.setTimeout(hideAlert, 5000); // Automatically hide alert after 5 seconds
+};
+```
+
+---
+
+### **Explanation**
+
+1. **`hideAlert()`**:
+   - **Purpose:** Remove any existing alert to avoid duplicates.
+   - **How It Works:**
+     - Finds the alert element (`.alert`) on the page.
+     - Removes it from the DOM using `parentElement.removeChild()`.
+2. **`showAlert(type, msg)`**:
+   - **Purpose:** Display a dynamic alert on the page.
+   - **Parameters:**
+     - `type`: Determines the alert style (`success` for green, `error` for red).
+     - `msg`: The message text to display inside the alert.
+   - **Process:**
+     - Calls `hideAlert()` to remove existing alerts.
+     - Creates the alert HTML dynamically using a template string.
+     - Inserts the alert at the top of the page (`<body>`) using `insertAdjacentHTML('afterbegin')`.
+     - Schedules the alert to disappear after 5 seconds with `setTimeout`.
+
+---
+
+## **3. Login Form Submission**
+
+### **Workflow**
+
+1. User enters their **email** and **password**.
+2. Upon form submission:
+   - The data is validated on the client side.
+   - A POST request is sent to the backend API for authentication.
+3. Depending on the response:
+   - A success alert is displayed, and the user is redirected.
+   - An error alert is displayed with the failure message.
+
+---
+
+### **Code: `index.js`**
+
+```jsx
+// Import modules
+import '@babel/polyfill'; // Adds support for older browsers
+import { login } from './login'; // Login functionality
+import { displayMap } from './mapbox'; // Map display functionality
+
+// DOM Elements
+const mapBox = document.getElementById('map');
+const loginForm = document.querySelector('.form');
+
+// Render map if mapBox exists
+if (mapBox) {
+  const locations = JSON.parse(mapBox.dataset.locations); // Parse locations from data attribute
+  displayMap(locations);
+}
+
+// Handle login form submission
+if (loginForm) {
+  loginForm.addEventListener('submit', (e) => {
+    e.preventDefault(); // Prevent page reload
+    const email = document.getElementById('email').value; // Get email input value
+    const password = document.getElementById('password').value; // Get password input value
+    login(email, password); // Call login function with user inputs
+  });
+}
+```
+
+---
+
+### **Explanation**
+
+1. **DOM Selection:**
+   - `mapBox`: Checks if a map element exists to render locations dynamically.
+   - `loginForm`: Selects the login form to handle submission.
+2. **Form Submission Handling:**
+   - Listens for the `submit` event on the login form.
+   - **`e.preventDefault()`**: Prevents the default behavior of the form (e.g., reloading the page).
+   - Fetches user-entered values (`email` and `password`) from the input fields.
+   - Passes the values to the `login` function for further processing.
+
+---
+
+## **4. Handling Login Requests**
+
+### **Code: `login.js`**
+
+```jsx
+import axios from 'axios'; // HTTP request library
+import { showAlert } from './alert'; // Alerts module
+
+// Login function
+export const login = async (email, password) => {
   try {
-    // 1. Verify the token
-    const decoded = await promisify(jwt.verify)(
-      req.cookies.jwt,
-      process.env.JWT_SECRET,
-    );
+    const res = await axios({
+      method: 'POST',
+      url: 'http://127.0.0.1:8000/api/v1/users/login', // Backend login endpoint
+      data: { email, password }, // Data sent in the request body
+    });
 
-    // 2. Check if user exists
-    const currentUser = await User.findById(decoded.id);
-    if (!currentUser) return next();
-
-    // 3. Check if password has changed after token issue
-    if (currentUser.changedPasswordAfter(decoded.iat)) return next();
-
-    // 4. Pass user to templates
-    res.locals.user = currentUser;
-    return next();
+    // On success
+    if (res.data.status === 'success') {
+      showAlert('success', 'Logged in successfully'); // Display success alert
+      window.setTimeout(() => location.assign('/'), 1500); // Redirect to homepage after 1.5 seconds
+    }
   } catch (err) {
-    return next(); // Move on if any error occurs
+    showAlert('error', err.response.data.message); // Display error alert
   }
 };
 ```
 
 ---
 
-## **Applying Middleware to Routes**
+### **Explanation**
 
-To ensure all rendered pages have access to the user’s login status:
-
-- Apply `isLoggedIn` middleware to all routes in `viewRoutes`.
-
-### **Code Example**
-
-```jsx
-router.use(authController.isLoggedIn);
-```
-
-This ensures that `isLoggedIn` runs before any route handlers, making `res.locals.user` available in all templates.
+1. **`axios` Request:**
+   - Sends a `POST` request to the backend API.
+   - Includes `email` and `password` in the request body.
+2. **Success Handling:**
+   - If the server responds with `status: 'success'`:
+     - Displays a green success alert using `showAlert`.
+     - Redirects the user to the homepage (`/`) after 1.5 seconds.
+3. **Error Handling:**
+   - If an error occurs (e.g., invalid credentials), displays a red error alert with the server's error message.
 
 ---
 
-## **Using the User Data in Templates**
+## **5. Modular Frontend Architecture**
 
-### **Dynamic Rendering with Pug**
+### **Why Modularize?**
 
-Using the `user` variable in Pug templates allows conditional rendering based on login status.
-
-### **Example: Conditional Rendering in the Header**
-
-```
-if user
-  // User is logged in
-  li.nav-item
-    a.nav-link.logout Log out
-    span Welcome #{user.name.split(' ')[0]}!
-    img(src=`/img/users/${user.photo}` alt=`${user.name}`)
-else
-  // User is not logged in
-  li.nav-item
-    a.nav-link(href='/login') Login
-  li.nav-item
-    a.nav-link(href='/signup') Sign Up
-```
-
-- **Logic**:
-  - If `user` exists, display their name, profile picture, and a logout button.
-  - If not, show login and signup options.
-- **Note**: To display only the first name, we split `user.name` by spaces and use the first element.
+- Simplifies maintenance and improves readability.
+- Avoids including multiple script files manually in HTML.
+- Uses ES6 modules (`import`/`export`) for reusable and organized code.
 
 ---
 
-## **Testing the Functionality**
+## **6. Using Parcel for Bundling**
 
-1. **Login Flow**:
-   - Log in as a user.
-   - Verify the cookie is set.
-   - Reload the page to see the user’s name and profile picture.
-2. **Logout Flow**:
-   - Delete the cookie to simulate logging out.
-   - Reload the page to revert to the default state.
+### **What is Parcel?**
 
----
-
-## **Handling Errors**
-
-1. **Duplicate Middleware Execution**:
-   - Ensure `next()` is called only once. Avoid multiple calls by returning immediately after `next()`.
-2. **Token or User Issues**:
-   - If token verification or user checks fail, skip setting `res.locals.user` and move on.
+- A modern **JavaScript bundler** that combines all modules into a single file for production.
+- Key Features:
+  - **Zero Configuration:** No complex setup required.
+  - **Fast:** Efficiently bundles files and manages dependencies.
 
 ---
 
-## **Key Takeaways**
+### **Setting Up Parcel**
 
-1. Middleware can dynamically enrich the data available to templates, enabling conditional rendering.
-2. `res.locals` is a powerful way to pass variables to templates globally.
-3. Cookies are the preferred method for transferring tokens in rendered pages.
-4. Proper error handling and flow control in middleware prevent bugs and ensure smooth functionality.
+1. Install Parcel:
+
+   ```bash
+   npm install parcel-bundler --save-dev
+   ```
+
+2. Add Scripts to `package.json`:
+
+   ```json
+   "scripts": {
+     "watch:js": "parcel watch public/js/index.js --out-dir public/js --out-file bundle.js",
+     "build:js": "parcel build public/js/index.js --out-dir public/js --out-file bundle.js"
+   }
+   ```
+
+3. Run Parcel Watcher:
+
+   ```bash
+   npm run watch:js
+   ```
+
+4. Include the bundled file in your HTML:
+
+   ```html
+   <script src="/public/js/bundle.js"></script>
+   ```
 
 ---
 
-By following these steps, you can implement a robust login system that dynamically adapts to user states and provides a seamless experience on the frontend.
+## **7. Testing and Debugging**
+
+### **Test Cases**
+
+1. **Successful Login:**
+   - Use correct credentials.
+   - Verify the success alert and redirection.
+2. **Failed Login:**
+   - Use incorrect credentials.
+   - Verify the error alert with the correct failure message.
+3. **Alerts:**
+   - Ensure alerts disappear after 5 seconds.
+
+---
+
+### 8. Making Code Work in All Browsers with Babel and Polyfills
+
+1. **Babel**
+   - Transpiles modern JavaScript syntax (ES6+) into older versions for compatibility.
+   - Handles syntax but **not runtime features** (e.g., `Promise`, `async/await`).
+2. **Polyfills**
+   - Adds missing features to browsers that don't support them.
+   - Replace deprecated `@babel/polyfill` with:
+     - **`core-js/stable`**: For JavaScript features like `Promise`, `Array.includes`.
+     - **`regenerator-runtime/runtime`**: For `async/await` and generators.
+
+---
+
+## **9. Key Takeaways**
+
+1. **Dynamic Alerts:** Modularize and reuse alert functions for user feedback.
+2. **Frontend Architecture:** Use ES6 modules and Parcel for a clean and maintainable codebase.
+3. **Async Login Handling:** Use `axios` for secure and structured API communication.

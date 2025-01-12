@@ -1,5 +1,7 @@
-const login = async (email, password) => {
-  // console.log(email, password);
+import axios from 'axios';
+import { showAlert } from './alert';
+
+export const login = async (email, password) => {
   try {
     const res = await axios({
       method: 'POST',
@@ -10,22 +12,13 @@ const login = async (email, password) => {
       },
     });
     if (res.data.status === 'success') {
-      alert('Logged in successfully');
+      showAlert('success', 'Logged in successfully');
       window.setTimeout(() => {
         location.assign('/');
       }, 1500);
     }
     console.log(res);
   } catch (err) {
-    alert(err.response.data.message);
-    console.log(err.response.data); // you can see from axios library documentation
+    showAlert('error', err.response.data.message);
   }
 };
-
-//querySelector= is used to select a el based on a class.
-document.querySelector('.form').addEventListener('submit', (e) => {
-  e.preventDefault(); //this prevent's the form,from loading any other page
-  const email = document.getElementById('email').value;
-  const password = document.getElementById('password').value;
-  login(email, password);
-});
