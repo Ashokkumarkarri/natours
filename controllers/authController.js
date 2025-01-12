@@ -82,6 +82,14 @@ exports.login = catchAsync(async (req, res, next) => {
   createSendToken(user, 200, res);
 });
 
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'logged-out-dummy-jwt', {
+    expires: new Date(Date.now() + 10 * 1000),
+    httpOnly: true,
+  });
+  res.status(200).json({ status: 'success' });
+};
+
 exports.protect = catchAsync(async (req, res, next) => {
   //1)Getting token and check it's there
   let token;
@@ -127,32 +135,36 @@ exports.protect = catchAsync(async (req, res, next) => {
 //Only for rendered pages, there will be no errors
 //we will check if user logged in or not
 //we also have protect middleware to check if user loged in or not, but that protect middleware is only for proteced route. but this middleware will run for all requests.
-exports.isLoggedIn = catchAsync(async (req, res, next) => {
+exports.isLoggedIn = async (req, res, next) => {
   if (req.cookies.jwt) {
-    //1)Verification token
-    const decoded = await promisify(jwt.verify)(
-      req.cookies.jwt,
-      process.env.JWT_SECRET,
-    );
-    // console.log(decoded);
+    try {
+      //1)Verification token
+      const decoded = await promisify(jwt.verify)(
+        req.cookies.jwt,
+        process.env.JWT_SECRET,
+      );
+      // console.log(decoded);
 
-    //2)check if user still exists
-    const currentUser = await User.findById(decoded.id);
-    if (!currentUser) {
+      //2)check if user still exists
+      const currentUser = await User.findById(decoded.id);
+      if (!currentUser) {
+        return next();
+      }
+
+      //3)check if user change password after the token was issues
+      if (currentUser.changedPasswordAfter(decoded.iat)) {
+        return next();
+      }
+
+      //There is a Logged in USER
+      res.locals.user = currentUser; // what ever we mention here, we can access that in our PUG template. Ever pug template has access to this variable "res.locals"
+      return next();
+    } catch (err) {
       return next();
     }
-
-    //3)check if user change password after the token was issues
-    if (currentUser.changedPasswordAfter(decoded.iat)) {
-      return next();
-    }
-
-    //There is a Logged in USER
-    res.locals.user = currentUser; // what ever we mention here, we can access that in our PUG template. Ever pug template has access to this variable "res.locals"
-    return next();
   }
   next(); //if there is no cookies the next middleware will be called.
-});
+};
 
 // Middleware to restrict actions based on user roles
 exports.restrictTo = (...roles) => {

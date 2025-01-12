@@ -1,314 +1,229 @@
-# **Node.js Frontend Integration: Alerts and Login Functionality**
+# 019 Logging out Users
 
-This session is focused on integrating alerts and login functionality in a Node.js application. We modularize the code for maintainability and use Parcel for bundling files to streamline frontend development.
-
-- **What Does Modularize Mean?**
-  - Breaking code into smaller, reusable pieces (modules).
-  - Each module handles a specific functionality (e.g., alerts, login, map display).
-- **Why Modularize?**
-  - **Improved Readability:** Code is easier to understand and maintain.
-  - **Reusability:** Functions can be reused across different parts of the application.
-  - **Isolation:** Each module works independently, reducing bugs.
-  - **Scalability:** Adding new features becomes simpler.
-- **How to Modularize?**
-
-  - Use ES6 modules: `export` and `import` keywords.
-  - Example:
-
-    ```jsx
-    // alert.js
-    export const showAlert = (type, msg) => {
-      /* alert logic */
-    };
-
-    // login.js
-    import { showAlert } from './alert';
-    ```
-
-- **Role of Parcel Bundler**
-  - Combines all modules into a single file for production use.
-  - Benefits:
-    - Automatically resolves dependencies.
-    - Optimizes the code for browsers.
-- **Steps for Parcel Setup**
-
-  - Install Parcel:
-    ```bash
-    npm install parcel-bundler --save-dev
-    ```
-  - Add scripts to `package.json`:
-
-    ```json
-    "scripts": {
-      "watch:js": "parcel watch src/index.js --out-dir dist --out-file bundle.js",
-      "build:js": "parcel build src/index.js --out-dir dist --out-file bundle.js"
-    }
-
-    ```
-
-  - Run Parcel:
-    ```bash
-    npm run watch:js
-    ```
-
-- **Conclusion**
-  - Modularizing and bundling with tools like Parcel ensures maintainable, scalable, and browser-compatible code.
+## **Implementing a Secure User Logout in Node.js**
 
 ---
 
-## **1. Purpose of Dynamic Alerts**
+## **Introduction**
 
-### **What are Alerts?**
+In this session, we focus on implementing a **secure logout mechanism** for our application. Unlike traditional logout methods that directly delete cookies, we will:
 
-Alerts are small messages displayed to users to provide feedback on their actions. For example:
-
-- **Success Alert:** "Logged in successfully!"
-- **Error Alert:** "Incorrect email or password."
-
-### **Why Use Alerts?**
-
-1. **Immediate Feedback:** Users instantly know the result of their action.
-2. **User Experience:** Alerts improve the interface by clearly communicating success or failure.
-3. **Customizable:** Alerts can be styled and programmed to disappear after a few seconds, keeping the interface clean.
+1. Use an **HTTP-only cookie** for enhanced security.
+2. Implement a **logout route** to clear the authentication token by overwriting the existing cookie.
 
 ---
 
-## **2. Managing Alerts in Code**
+## **Why Traditional Logout Doesn't Work Here**
 
-To handle alerts effectively, we create a separate module (`alert.js`) for:
-
-1. **Showing Alerts:** Display success or error messages dynamically.
-2. **Hiding Alerts:** Remove existing alerts from the page after a set duration or before displaying a new one.
+1. **HTTP-Only Cookies**:
+   - The cookie storing the JSON Web Token (JWT) is set as **HTTP-only**.
+   - **What this means**:
+     - The browser cannot access or manipulate the cookie (e.g., deleting it).
+     - Provides additional security by preventing client-side JavaScript from tampering with the token.
+2. **Problem**:
+   - Normally, we delete cookies or tokens stored in local storage for logout.
+   - But with HTTP-only cookies, they cannot be deleted or modified directly from the browser.
+3. **Solution**:
+   - We overwrite the JWT cookie with a dummy value (e.g., `logged-out-dummy-jwt`).
+   - This new cookie has:
+     - The same name (`jwt`) as the original token.
+     - An **expiry time of 10 seconds**.
+   - Once this cookie expires, the user is effectively logged out.
 
 ---
 
-### **Code: `alert.js`**
+## **Step-by-Step Implementation**
+
+### **1. Backend: Logout Controller**
+
+### **Code: `authController.js`**
 
 ```jsx
-// Function to hide an existing alert
-export const hideAlert = () => {
-  const el = document.querySelector('.alert'); // Select alert element
-  if (el) el.parentElement.removeChild(el); // Remove alert from DOM
-};
-
-// Function to display an alert
-// Parameters:
-// - `type`: Either 'success' (green alert) or 'error' (red alert)
-// - `msg`: Message to display inside the alert
-export const showAlert = (type, msg) => {
-  hideAlert(); // Ensure no duplicate alerts exist
-  const markup = `<div class="alert alert--${type}">${msg}</div>`; // HTML for the alert
-  document.querySelector('body').insertAdjacentHTML('afterbegin', markup); // Add alert to DOM
-  window.setTimeout(hideAlert, 5000); // Automatically hide alert after 5 seconds
-};
-```
-
----
-
-### **Explanation**
-
-1. **`hideAlert()`**:
-   - **Purpose:** Remove any existing alert to avoid duplicates.
-   - **How It Works:**
-     - Finds the alert element (`.alert`) on the page.
-     - Removes it from the DOM using `parentElement.removeChild()`.
-2. **`showAlert(type, msg)`**:
-   - **Purpose:** Display a dynamic alert on the page.
-   - **Parameters:**
-     - `type`: Determines the alert style (`success` for green, `error` for red).
-     - `msg`: The message text to display inside the alert.
-   - **Process:**
-     - Calls `hideAlert()` to remove existing alerts.
-     - Creates the alert HTML dynamically using a template string.
-     - Inserts the alert at the top of the page (`<body>`) using `insertAdjacentHTML('afterbegin')`.
-     - Schedules the alert to disappear after 5 seconds with `setTimeout`.
-
----
-
-## **3. Login Form Submission**
-
-### **Workflow**
-
-1. User enters their **email** and **password**.
-2. Upon form submission:
-   - The data is validated on the client side.
-   - A POST request is sent to the backend API for authentication.
-3. Depending on the response:
-   - A success alert is displayed, and the user is redirected.
-   - An error alert is displayed with the failure message.
-
----
-
-### **Code: `index.js`**
-
-```jsx
-// Import modules
-import '@babel/polyfill'; // Adds support for older browsers
-import { login } from './login'; // Login functionality
-import { displayMap } from './mapbox'; // Map display functionality
-
-// DOM Elements
-const mapBox = document.getElementById('map');
-const loginForm = document.querySelector('.form');
-
-// Render map if mapBox exists
-if (mapBox) {
-  const locations = JSON.parse(mapBox.dataset.locations); // Parse locations from data attribute
-  displayMap(locations);
-}
-
-// Handle login form submission
-if (loginForm) {
-  loginForm.addEventListener('submit', (e) => {
-    e.preventDefault(); // Prevent page reload
-    const email = document.getElementById('email').value; // Get email input value
-    const password = document.getElementById('password').value; // Get password input value
-    login(email, password); // Call login function with user inputs
+exports.logout = (req, res) => {
+  res.cookie('jwt', 'logged-out-dummy-jwt', {
+    expires: new Date(Date.now() + 10 * 1000), // Expires in 10 seconds
+    httpOnly: true, // Prevents client-side JavaScript access
   });
-}
+  res.status(200).json({ status: 'success' });
+};
 ```
-
----
 
 ### **Explanation**
 
-1. **DOM Selection:**
-   - `mapBox`: Checks if a map element exists to render locations dynamically.
-   - `loginForm`: Selects the login form to handle submission.
-2. **Form Submission Handling:**
-   - Listens for the `submit` event on the login form.
-   - **`e.preventDefault()`**: Prevents the default behavior of the form (e.g., reloading the page).
-   - Fetches user-entered values (`email` and `password`) from the input fields.
-   - Passes the values to the `login` function for further processing.
+1. **Overwriting the JWT Cookie**:
+   - `res.cookie('jwt', 'logged-out-dummy-jwt')` sets a new cookie with the same name as the original JWT cookie.
+   - By overwriting the original cookie, we effectively invalidate the token.
+2. **Short Expiry Time**:
+   - The new cookie expires in 10 seconds (`Date.now() + 10 * 1000`).
+   - After this, the browser automatically deletes it.
+3. **HTTP-Only Cookie**:
+   - The cookie is set as **httpOnly: true**, meaning:
+     - It cannot be accessed or modified via JavaScript.
+     - This enhances security, preventing cross-site scripting (XSS) attacks.
+4. **Response**:
+   - A `200 OK` response is sent with `{ status: 'success' }`.
 
 ---
 
-## **4. Handling Login Requests**
+### **2. Routing the Logout Endpoint**
+
+### **Code: `userRoutes.js`**
+
+```jsx
+router.get('/logout', authController.logout);
+```
+
+### **Explanation**
+
+1. **GET Request**:
+   - The logout endpoint is a simple **GET request** since we’re not sending or modifying user data—just overwriting the cookie.
+   - Example URL: `http://127.0.0.1:8000/api/v1/users/logout`.
+2. **Triggering Logout**:
+   - When this endpoint is hit, the `logout` controller is executed, invalidating the JWT cookie.
+
+---
+
+### **3. Frontend: Logout Functionality**
 
 ### **Code: `login.js`**
 
 ```jsx
-import axios from 'axios'; // HTTP request library
-import { showAlert } from './alert'; // Alerts module
-
-// Login function
-export const login = async (email, password) => {
+export const logout = async () => {
   try {
     const res = await axios({
-      method: 'POST',
-      url: 'http://127.0.0.1:8000/api/v1/users/login', // Backend login endpoint
-      data: { email, password }, // Data sent in the request body
+      method: 'GET',
+      url: 'http://127.0.0.1:8000/api/v1/users/logout',
     });
-
-    // On success
-    if (res.data.status === 'success') {
-      showAlert('success', 'Logged in successfully'); // Display success alert
-      window.setTimeout(() => location.assign('/'), 1500); // Redirect to homepage after 1.5 seconds
-    }
+    if (res.data.status === 'success') location.reload(true); // Reload the page from the server
   } catch (err) {
-    showAlert('error', err.response.data.message); // Display error alert
+    console.log(err.response);
+    showAlert('error', 'Error logging out! Try again.');
   }
 };
 ```
 
+### **Explanation**
+
+1. **Logout Request**:
+   - Sends a **GET request** to the logout endpoint using `axios`.
+2. **On Success**:
+   - If the response indicates success (`res.data.status === 'success'`), the page is reloaded to reflect the logout state:
+     ```jsx
+     location.reload(true);
+     ```
+     - `true` forces the page to reload from the server instead of using the browser cache.
+3. **Error Handling**:
+   - If the request fails (e.g., no internet connection), an error message is displayed using `showAlert`.
+
 ---
+
+### **4. Adding Logout Button Listener**
+
+### **Code: `index.js`**
+
+```jsx
+// Import logout function
+import { logout } from './login';
+
+// DOM Element for logout button
+const logOutButton = document.querySelector('.nav__el--logout');
+
+// Add click event listener to logout button
+if (logOutButton) {
+  logOutButton.addEventListener('click', logout);
+}
+```
 
 ### **Explanation**
 
-1. **`axios` Request:**
-   - Sends a `POST` request to the backend API.
-   - Includes `email` and `password` in the request body.
-2. **Success Handling:**
-   - If the server responds with `status: 'success'`:
-     - Displays a green success alert using `showAlert`.
-     - Redirects the user to the homepage (`/`) after 1.5 seconds.
-3. **Error Handling:**
-   - If an error occurs (e.g., invalid credentials), displays a red error alert with the server's error message.
+1. **DOM Selection**:
+   - Selects the logout button element (`.nav__el--logout`).
+2. **Event Listener**:
+   - Adds a `click` event listener to trigger the `logout` function when the button is clicked.
 
 ---
 
-## **5. Modular Frontend Architecture**
+### **5. Handling Middleware Errors for Logout**
 
-### **Why Modularize?**
+### **Code Fix: `authController.isLoggedIn`**
 
-- Simplifies maintenance and improves readability.
-- Avoids including multiple script files manually in HTML.
-- Uses ES6 modules (`import`/`export`) for reusable and organized code.
+```jsx
+exports.isLoggedIn = async (req, res, next) => {
+  try {
+    if (req.cookies.jwt) {
+      const decoded = await promisify(jwt.verify)(
+        req.cookies.jwt,
+        process.env.JWT_SECRET,
+      );
 
----
+      const currentUser = await User.findById(decoded.id);
+      if (!currentUser) return next();
 
-## **6. Using Parcel for Bundling**
+      if (currentUser.changedPasswordAfter(decoded.iat)) return next();
 
-### **What is Parcel?**
+      res.locals.user = currentUser;
+      return next();
+    }
+  } catch (err) {
+    return next(); // No logged-in user; proceed to the next middleware
+  }
+  next();
+};
+```
 
-- A modern **JavaScript bundler** that combines all modules into a single file for production.
-- Key Features:
-  - **Zero Configuration:** No complex setup required.
-  - **Fast:** Efficiently bundles files and manages dependencies.
+### **Fix Explanation**
 
----
-
-### **Setting Up Parcel**
-
-1. Install Parcel:
-
-   ```bash
-   npm install parcel-bundler --save-dev
-   ```
-
-2. Add Scripts to `package.json`:
-
-   ```json
-   "scripts": {
-     "watch:js": "parcel watch public/js/index.js --out-dir public/js --out-file bundle.js",
-     "build:js": "parcel build public/js/index.js --out-dir public/js --out-file bundle.js"
-   }
-   ```
-
-3. Run Parcel Watcher:
-
-   ```bash
-   npm run watch:js
-   ```
-
-4. Include the bundled file in your HTML:
-
-   ```html
-   <script src="/public/js/bundle.js"></script>
-   ```
+1. **Error Cause**:
+   - The `isLoggedIn` middleware tried verifying a malformed JWT (the dummy `logged-out-dummy-jwt`), causing errors.
+2. **Solution**:
+   - Catch and handle verification errors locally using a `try-catch` block.
+   - If verification fails, simply call `next()` to proceed without identifying a logged-in user.
 
 ---
 
-## **7. Testing and Debugging**
+### **6. Ensuring Proper Logout Behavior**
 
-### **Test Cases**
-
-1. **Successful Login:**
-   - Use correct credentials.
-   - Verify the success alert and redirection.
-2. **Failed Login:**
-   - Use incorrect credentials.
-   - Verify the error alert with the correct failure message.
-3. **Alerts:**
-   - Ensure alerts disappear after 5 seconds.
+1. **Reloading the Page**:
+   - After logout, the page reloads from the server (`location.reload(true)`), ensuring the user menu reflects the logged-out state.
+2. **Preventing Cache Issues**:
+   - Setting `true` in `location.reload(true)` ensures the page isn’t reloaded from the browser cache, which might still display the user menu.
 
 ---
 
-### 8. Making Code Work in All Browsers with Babel and Polyfills
+### **7. Testing the Logout**
 
-1. **Babel**
-   - Transpiles modern JavaScript syntax (ES6+) into older versions for compatibility.
-   - Handles syntax but **not runtime features** (e.g., `Promise`, `async/await`).
-2. **Polyfills**
-   - Adds missing features to browsers that don't support them.
-   - Replace deprecated `@babel/polyfill` with:
-     - **`core-js/stable`**: For JavaScript features like `Promise`, `Array.includes`.
-     - **`regenerator-runtime/runtime`**: For `async/await` and generators.
+### **Steps to Test**
+
+1. **Log In**:
+   - Verify that the user menu appears after successful login.
+2. **Log Out**:
+   - Click the logout button.
+   - Check that:
+     - The JWT cookie is overwritten with the dummy token.
+     - The user menu disappears after the page reloads.
+     - The application reflects the logged-out state.
+3. **Check Cookies**:
+   - After logout, confirm that the JWT cookie has expired or been removed.
+
+### **Common Errors to Handle**
+
+1. **No Internet Connection**:
+   - Verify that the application shows an error alert if the logout request fails.
+2. **JWT Errors**:
+   - Ensure the `isLoggedIn` middleware gracefully handles invalid tokens without breaking the application.
 
 ---
 
-## **9. Key Takeaways**
+## **Key Takeaways**
 
-1. **Dynamic Alerts:** Modularize and reuse alert functions for user feedback.
-2. **Frontend Architecture:** Use ES6 modules and Parcel for a clean and maintainable codebase.
-3. **Async Login Handling:** Use `axios` for secure and structured API communication.
+1. **HTTP-Only Cookies**:
+   - Enhance security by preventing client-side access to sensitive tokens.
+   - Require server-side mechanisms for logout (e.g., overwriting cookies).
+2. **Logout Mechanism**:
+   - Overwrite the JWT cookie with a dummy value and set a short expiry time.
+   - Reload the page to reflect the logged-out state.
+3. **Middleware Design**:
+   - Gracefully handle errors in middleware, ensuring smooth user experience even when tokens are invalid.
+4. **Frontend-Backend Integration**:
+   - Use **axios** to send requests to the logout endpoint.
+   - Dynamically update the UI by reloading the page from the server.
