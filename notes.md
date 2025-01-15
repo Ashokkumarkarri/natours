@@ -1,229 +1,118 @@
-# 019 Logging out Users
-
-## **Implementing a Secure User Logout in Node.js**
-
----
-
-## **Introduction**
-
-In this session, we focus on implementing a **secure logout mechanism** for our application. Unlike traditional logout methods that directly delete cookies, we will:
-
-1. Use an **HTTP-only cookie** for enhanced security.
-2. Implement a **logout route** to clear the authentication token by overwriting the existing cookie.
-
----
-
-## **Why Traditional Logout Doesn't Work Here**
-
-1. **HTTP-Only Cookies**:
-   - The cookie storing the JSON Web Token (JWT) is set as **HTTP-only**.
-   - **What this means**:
-     - The browser cannot access or manipulate the cookie (e.g., deleting it).
-     - Provides additional security by preventing client-side JavaScript from tampering with the token.
-2. **Problem**:
-   - Normally, we delete cookies or tokens stored in local storage for logout.
-   - But with HTTP-only cookies, they cannot be deleted or modified directly from the browser.
-3. **Solution**:
-   - We overwrite the JWT cookie with a dummy value (e.g., `logged-out-dummy-jwt`).
-   - This new cookie has:
-     - The same name (`jwt`) as the original token.
-     - An **expiry time of 10 seconds**.
-   - Once this cookie expires, the user is effectively logged out.
-
----
-
-## **Step-by-Step Implementation**
-
-### **1. Backend: Logout Controller**
-
-### **Code: `authController.js`**
+we create an Error is the TOur does not exist
 
 ```jsx
-exports.logout = (req, res) => {
-  res.cookie('jwt', 'logged-out-dummy-jwt', {
-    expires: new Date(Date.now() + 10 * 1000), // Expires in 10 seconds
-    httpOnly: true, // Prevents client-side JavaScript access
-  });
-  res.status(200).json({ status: 'success' });
-};
-```
-
-### **Explanation**
-
-1. **Overwriting the JWT Cookie**:
-   - `res.cookie('jwt', 'logged-out-dummy-jwt')` sets a new cookie with the same name as the original JWT cookie.
-   - By overwriting the original cookie, we effectively invalidate the token.
-2. **Short Expiry Time**:
-   - The new cookie expires in 10 seconds (`Date.now() + 10 * 1000`).
-   - After this, the browser automatically deletes it.
-3. **HTTP-Only Cookie**:
-   - The cookie is set as **httpOnly: true**, meaning:
-     - It cannot be accessed or modified via JavaScript.
-     - This enhances security, preventing cross-site scripting (XSS) attacks.
-4. **Response**:
-   - A `200 OK` response is sent with `{ status: 'success' }`.
-
----
-
-### **2. Routing the Logout Endpoint**
-
-### **Code: `userRoutes.js`**
-
-```jsx
-router.get('/logout', authController.logout);
-```
-
-### **Explanation**
-
-1. **GET Request**:
-   - The logout endpoint is a simple **GET request** since we’re not sending or modifying user data—just overwriting the cookie.
-   - Example URL: `http://127.0.0.1:8000/api/v1/users/logout`.
-2. **Triggering Logout**:
-   - When this endpoint is hit, the `logout` controller is executed, invalidating the JWT cookie.
-
----
-
-### **3. Frontend: Logout Functionality**
-
-### **Code: `login.js`**
-
-```jsx
-export const logout = async () => {
-  try {
-    const res = await axios({
-      method: 'GET',
-      url: 'http://127.0.0.1:8000/api/v1/users/logout',
-    });
-    if (res.data.status === 'success') location.reload(true); // Reload the page from the server
-  } catch (err) {
-    console.log(err.response);
-    showAlert('error', 'Error logging out! Try again.');
-  }
-};
-```
-
-### **Explanation**
-
-1. **Logout Request**:
-   - Sends a **GET request** to the logout endpoint using `axios`.
-2. **On Success**:
-   - If the response indicates success (`res.data.status === 'success'`), the page is reloaded to reflect the logout state:
-     ```jsx
-     location.reload(true);
-     ```
-     - `true` forces the page to reload from the server instead of using the browser cache.
-3. **Error Handling**:
-   - If the request fails (e.g., no internet connection), an error message is displayed using `showAlert`.
-
----
-
-### **4. Adding Logout Button Listener**
-
-### **Code: `index.js`**
-
-```jsx
-// Import logout function
-import { logout } from './login';
-
-// DOM Element for logout button
-const logOutButton = document.querySelector('.nav__el--logout');
-
-// Add click event listener to logout button
-if (logOutButton) {
-  logOutButton.addEventListener('click', logout);
+// 2) Check if the tour exists. If not, create an error object and pass it to the global error handler.
+if (!tour) {
+  // Create a new AppError object with a message and a status code of 404 (Not Found).
+  // 'next' is used to forward this error to the global error handler middleware.
+  return next(new AppError('There is no tour with that Name.', 404));
 }
 ```
 
-### **Explanation**
-
-1. **DOM Selection**:
-   - Selects the logout button element (`.nav__el--logout`).
-2. **Event Listener**:
-   - Adds a `click` event listener to trigger the `logout` function when the button is clicked.
-
 ---
 
-### **5. Handling Middleware Errors for Logout**
+## Production
 
-### **Code Fix: `authController.isLoggedIn`**
+Here's a fully commented version of your `sendErrorProd` code for better understanding:
 
 ```jsx
-exports.isLoggedIn = async (req, res, next) => {
-  try {
-    if (req.cookies.jwt) {
-      const decoded = await promisify(jwt.verify)(
-        req.cookies.jwt,
-        process.env.JWT_SECRET,
-      );
-
-      const currentUser = await User.findById(decoded.id);
-      if (!currentUser) return next();
-
-      if (currentUser.changedPasswordAfter(decoded.iat)) return next();
-
-      res.locals.user = currentUser;
-      return next();
+const sendErrorProd = (err, req, res) => {
+  // ----------- A) API Errors -----------------
+  // Check if the request URL starts with '/api' (indicating it's an API request).
+  if (req.originalUrl.startsWith('/api')) {
+    // A) Operational, trusted error: Send a clear, user-friendly message to the client.
+    if (err.isOperational) {
+      return res.status(err.statusCode).json({
+        status: err.status, // Status of the error ('fail' or 'error').
+        message: err.message, // Custom error message for the client.
+      });
     }
-  } catch (err) {
-    return next(); // No logged-in user; proceed to the next middleware
+    // B) Programming or 3rd-party/unknown error: Avoid leaking sensitive details to the client.
+    // 1) Log the full error for debugging purposes.
+    console.error('Error', err);
+    // 2) Send a generic error response to the client.
+    return res.status(500).json({
+      status: 'error', // Generic status for unknown errors.
+      message: 'Something went very wrong', // Generic error message.
+    });
   }
-  next();
+
+  // ----------- B) Rendered Website Errors -----------------
+  // Handle errors for non-API requests (e.g., rendered website pages).
+
+  // A) Operational, trusted error: Show a friendly error page with the error message.
+  if (err.isOperational) {
+    return res.status(err.statusCode).render('error', {
+      title: 'Something went wrong', // Page title.
+      msg: err.message, // Custom error message to display on the page.
+    });
+  }
+
+  // B) Programming or 3rd-party/unknown error: Avoid leaking sensitive details.
+  // 1) Log the full error for debugging purposes.
+  console.error('Error', err);
+  // 2) Render a generic error page with a user-friendly message.
+  return res.status(err.statusCode).render('error', {
+    title: 'Something went wrong', // Page title.
+    msg: 'Please try again later', // Generic error message for the user.
+  });
 };
 ```
 
-### **Fix Explanation**
+### Key Points:
 
-1. **Error Cause**:
-   - The `isLoggedIn` middleware tried verifying a malformed JWT (the dummy `logged-out-dummy-jwt`), causing errors.
-2. **Solution**:
-   - Catch and handle verification errors locally using a `try-catch` block.
-   - If verification fails, simply call `next()` to proceed without identifying a logged-in user.
-
----
-
-### **6. Ensuring Proper Logout Behavior**
-
-1. **Reloading the Page**:
-   - After logout, the page reloads from the server (`location.reload(true)`), ensuring the user menu reflects the logged-out state.
-2. **Preventing Cache Issues**:
-   - Setting `true` in `location.reload(true)` ensures the page isn’t reloaded from the browser cache, which might still display the user menu.
+1. **Error Categories:**
+   - **Operational Errors:** Expected and handled errors (e.g., invalid input).
+   - **Programming/Unknown Errors:** Unforeseen errors (e.g., bugs, 3rd-party failures).
+2. **API vs. Website:**
+   - **API:** Responds with JSON messages.
+   - **Rendered Website:** Displays error pages using templates.
+3. **Error Logging:**
+   - Logs are critical for debugging unknown or programming errors.
+4. **Generic Responses:**
+   - Prevents sensitive details from being exposed to the client.
 
 ---
 
-### **7. Testing the Logout**
+## Dev
 
-### **Steps to Test**
+Here's a fully commented version of the `sendErrorDev` function for clarity:
 
-1. **Log In**:
-   - Verify that the user menu appears after successful login.
-2. **Log Out**:
-   - Click the logout button.
-   - Check that:
-     - The JWT cookie is overwritten with the dummy token.
-     - The user menu disappears after the page reloads.
-     - The application reflects the logged-out state.
-3. **Check Cookies**:
-   - After logout, confirm that the JWT cookie has expired or been removed.
+```jsx
+const sendErrorDev = (err, req, res) => {
+  // A) Handle API Errors
+  // Check if the request URL starts with '/api' (indicating it's an API request).
+  if (req.originalUrl.startsWith('/api')) {
+    // Respond with detailed error information for development purposes.
+    return res.status(err.statusCode).json({
+      status: err.status, // The error status ('fail' or 'error').
+      error: err, // Complete error object (includes all properties).
+      message: err.message, // Detailed error message for debugging.
+      stack: err.stack, // Stack trace for pinpointing where the error occurred.
+    });
+  }
 
-### **Common Errors to Handle**
+  // B) Handle Rendered Website Errors
+  // Log the full error details to the console for debugging purposes.
+  console.error('Error', err);
 
-1. **No Internet Connection**:
-   - Verify that the application shows an error alert if the logout request fails.
-2. **JWT Errors**:
-   - Ensure the `isLoggedIn` middleware gracefully handles invalid tokens without breaking the application.
+  // Render the 'error' page with a descriptive message for developers.
+  return res.status(err.statusCode).render('error', {
+    title: 'Something went wrong', // Title for the error page.
+    msg: err.message, // Detailed error message displayed on the page.
+  });
+};
+```
 
----
+### Key Notes:
 
-## **Key Takeaways**
-
-1. **HTTP-Only Cookies**:
-   - Enhance security by preventing client-side access to sensitive tokens.
-   - Require server-side mechanisms for logout (e.g., overwriting cookies).
-2. **Logout Mechanism**:
-   - Overwrite the JWT cookie with a dummy value and set a short expiry time.
-   - Reload the page to reflect the logged-out state.
-3. **Middleware Design**:
-   - Gracefully handle errors in middleware, ensuring smooth user experience even when tokens are invalid.
-4. **Frontend-Backend Integration**:
-   - Use **axios** to send requests to the logout endpoint.
-   - Dynamically update the UI by reloading the page from the server.
+1. **Development Environment:**
+   - In development (`dev env`), you can expose detailed error information to help debug issues quickly.
+   - This includes the full error object and stack trace.
+2. **API vs. Website:**
+   - **API:** Returns error details in JSON format.
+   - **Rendered Website:** Displays the error details on a custom error page.
+3. **Error Logging:**
+   - Logs the error in the console for additional insights during debugging.
+4. **Separation of Concerns:**
+   - Handles API and website errors differently to match their respective response formats.
