@@ -7,6 +7,7 @@ const xss = require('xss-clean');
 const hpp = require('hpp');
 const path = require('path'); //core module, built in module, we use path module to manipulate the path names.
 const cookieParser = require('cookie-parser');
+const cors = require('cors'); // Added CORS package
 
 // const { execArgv } = require('process');
 const AppError = require('./utils/appError');
@@ -30,6 +31,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 //set security HTTP headers
 app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
+
+// Enable CORS
+app.use(
+  cors({
+    origin: 'http://localhost:8000', // Replace with your frontend origin
+    credentials: true, // Allow cookies and other credentials
+  }),
+);
 
 //DEvelopment logging
 if (process.env.NODE_ENV === 'development') {

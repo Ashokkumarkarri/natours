@@ -1,118 +1,191 @@
-we create an Error is the TOur does not exist
+## 021 Building the User Account Page (also some bugs fixes)
+
+## Bug Fixes
+
+Had fixed 2 bugs
+
+1. cross : there was some error cause related to cros origen error
+
+2.wrong url cause of that the JWT is not creating
+
+1. pacle bundler issues: the version 1 was used y jonas.
+   got some errors.
+
+```
+    "watch:js": "parcel watch ./public/js/index.js --out-dir ./public/js --out-file bundle.js --public-url ./",
+    "build:js": "parcel build ./public/js/index.js --out-dir ./public/js --out-file bundle.js --public-url ./"
+```
+
+```
+
+//in app.js
+//installed as dev dep
+
+const cors = require('cors'); // Added CORS package
+
+// Enable CORS
+app.use(
+  cors({
+    origin: 'http://localhost:8000', // Replace with your frontend origin
+    credentials: true, // Allow cookies and other credentials
+  }),
+);
+```
 
 ```jsx
-// 2) Check if the tour exists. If not, create an error object and pass it to the global error handler.
-if (!tour) {
-  // Create a new AppError object with a message and a status code of 404 (Not Found).
-  // 'next' is used to forward this error to the global error handler middleware.
-  return next(new AppError('There is no tour with that Name.', 404));
-}
+//login.js:
+//insted of localhost i had used the complete id addres cuase of that the jwt was not created
+     url: 'http://localhost:8000/api/v1/users/login',
+           withCredentials: true, // This ensures cookies are sent and received
 ```
 
 ---
 
-## Production
+# Building the User Account Page
 
-Here's a fully commented version of your `sendErrorProd` code for better understanding:
+## Introduction
+
+In this section, we will build the user account page, primarily using concepts we have already learned. The account page allows users to manage their personal information, upload a profile picture, and update their password.
+
+## Overview of the User Account Page
+
+The user account page contains the following features:
+
+- Navigation menu with user-related options.
+- Forms to update user details such as name and email.
+- Profile picture upload functionality.
+- Password change functionality.
+- Admin-specific options (if the user has an admin role).
+
+## Rendering the User Account Page
+
+### Controller Function (viewController.js)
 
 ```jsx
-const sendErrorProd = (err, req, res) => {
-  // ----------- A) API Errors -----------------
-  // Check if the request URL starts with '/api' (indicating it's an API request).
-  if (req.originalUrl.startsWith('/api')) {
-    // A) Operational, trusted error: Send a clear, user-friendly message to the client.
-    if (err.isOperational) {
-      return res.status(err.statusCode).json({
-        status: err.status, // Status of the error ('fail' or 'error').
-        message: err.message, // Custom error message for the client.
-      });
-    }
-    // B) Programming or 3rd-party/unknown error: Avoid leaking sensitive details to the client.
-    // 1) Log the full error for debugging purposes.
-    console.error('Error', err);
-    // 2) Send a generic error response to the client.
-    return res.status(500).json({
-      status: 'error', // Generic status for unknown errors.
-      message: 'Something went very wrong', // Generic error message.
-    });
-  }
-
-  // ----------- B) Rendered Website Errors -----------------
-  // Handle errors for non-API requests (e.g., rendered website pages).
-
-  // A) Operational, trusted error: Show a friendly error page with the error message.
-  if (err.isOperational) {
-    return res.status(err.statusCode).render('error', {
-      title: 'Something went wrong', // Page title.
-      msg: err.message, // Custom error message to display on the page.
-    });
-  }
-
-  // B) Programming or 3rd-party/unknown error: Avoid leaking sensitive details.
-  // 1) Log the full error for debugging purposes.
-  console.error('Error', err);
-  // 2) Render a generic error page with a user-friendly message.
-  return res.status(err.statusCode).render('error', {
-    title: 'Something went wrong', // Page title.
-    msg: 'Please try again later', // Generic error message for the user.
+exports.getAccount = (req, res) => {
+  res.status(200).render('account', {
+    title: 'Your Account',
   });
 };
 ```
 
-### Key Points:
+- This function renders the `account` page when a user navigates to it.
+- The page title is set dynamically.
 
-1. **Error Categories:**
-   - **Operational Errors:** Expected and handled errors (e.g., invalid input).
-   - **Programming/Unknown Errors:** Unforeseen errors (e.g., bugs, 3rd-party failures).
-2. **API vs. Website:**
-   - **API:** Responds with JSON messages.
-   - **Rendered Website:** Displays error pages using templates.
-3. **Error Logging:**
-   - Logs are critical for debugging unknown or programming errors.
-4. **Generic Responses:**
-   - Prevents sensitive details from being exposed to the client.
+## Account Page Template (account.pug)
 
----
+### Extending Base Template
 
-## Dev
-
-Here's a fully commented version of the `sendErrorDev` function for clarity:
-
-```jsx
-const sendErrorDev = (err, req, res) => {
-  // A) Handle API Errors
-  // Check if the request URL starts with '/api' (indicating it's an API request).
-  if (req.originalUrl.startsWith('/api')) {
-    // Respond with detailed error information for development purposes.
-    return res.status(err.statusCode).json({
-      status: err.status, // The error status ('fail' or 'error').
-      error: err, // Complete error object (includes all properties).
-      message: err.message, // Detailed error message for debugging.
-      stack: err.stack, // Stack trace for pinpointing where the error occurred.
-    });
-  }
-
-  // B) Handle Rendered Website Errors
-  // Log the full error details to the console for debugging purposes.
-  console.error('Error', err);
-
-  // Render the 'error' page with a descriptive message for developers.
-  return res.status(err.statusCode).render('error', {
-    title: 'Something went wrong', // Title for the error page.
-    msg: err.message, // Detailed error message displayed on the page.
-  });
-};
+```
+extends base
 ```
 
-### Key Notes:
+- This ensures that the `account.pug` template inherits the structure from the base template.
 
-1. **Development Environment:**
-   - In development (`dev env`), you can expose detailed error information to help debug issues quickly.
-   - This includes the full error object and stack trace.
-2. **API vs. Website:**
-   - **API:** Returns error details in JSON format.
-   - **Rendered Website:** Displays the error details on a custom error page.
-3. **Error Logging:**
-   - Logs the error in the console for additional insights during debugging.
-4. **Separation of Concerns:**
-   - Handles API and website errors differently to match their respective response formats.
+### Navigation Menu
+
+The navigation menu is dynamically generated using a mixin.
+
+```html
+mixin navItem(link,text,icon,active) li(class=`${active? 'side-nave--active':
+''}`) a(href=`${link}`) svg use(xlink:href=`img/icons.svg#icon-${icon}`) |
+#{text}
+```
+
+- The `navItem` mixin creates a menu item with an icon and link.
+- It highlights the active menu item dynamically.
+
+### Sidebar Navigation
+
+```
+block content
+    main.main
+        .user-view
+            nav.user-view__menu
+                ul.side-nav
+                    +navItem('#','Settings','settings', true)
+                    +navItem('#','My booking','briefcase')
+                    +navItem('#','My reviews','star')
+                    +navItem('#','Billing','settings')
+```
+
+- The sidebar menu allows users to navigate between different sections of the account page.
+- The `active` parameter determines which menu item is highlighted.
+
+### Admin Navigation (Conditional Rendering)
+
+```
+- if (user.role==='admin')
+    .admin-nav
+        h5.admin-nav__heading Admin
+        ul.side-nav
+            +navItem('#','Manage tours','map')
+            +navItem('#','Manage users','users')
+            +navItem('#','Manage reviews','star')
+            +navItem('#','Manage bookings','briefcase')
+```
+
+- This section is only displayed if the user has an admin role.
+- Provides options to manage tours, users, reviews, and bookings.
+
+## User Account Settings Form
+
+```
+.user-view__form-container
+    h2.heading-secondary.ma-bt-md Your account settings
+    form.form.form-user-data
+        .form__group
+            label.form__label(for='name') Name
+            input#name.form__input(type='text' value=`${user.name}`, required)
+        .form__group.ma-bt-md
+            label.form__label(for='email') Email address
+            input#email.form__input(type='email' value=`${user.email}`, required)
+```
+
+- Users can update their name and email using this form.
+- The values are pre-filled with user data.
+- The `required` attribute ensures that fields cannot be left empty.
+
+### Profile Picture Upload
+
+```
+.form__group.form__photo-upload
+    img.form__user-photo(src=`/img/users/${user.photo}` alt='User photo')
+    a.btn-text(href='') Choose new photo
+```
+
+- Displays the user's current profile picture.
+- Provides an option to upload a new profile picture.
+
+## Password Change Form
+
+```
+.user-view__form-container
+    h2.heading-secondary.ma-bt-md Password change
+    form.form.form-user-settings
+        .form__group
+            label.form__label(for='password-current') Current password
+            input#password-current.form__input(type='password' placeholder='••••••••', required, minlength='8')
+        .form__group
+            label.form__label(for='password') New password
+            input#password.form__input(type='password' placeholder='••••••••', required, minlength='8')
+        .form__group.ma-bt-lg
+            label.form__label(for='password-confirm') Confirm password
+            input#password-confirm.form__input(type='password' placeholder='••••••••', required, minlength='8')
+        .form__group.right
+            button.btn.btn--small.btn--green Save password
+```
+
+- Allows users to update their password.
+- Ensures the new password meets a minimum length requirement.
+- Includes a confirmation field to verify the new password.
+- The `Save password` button submits the form.
+
+## Summary
+
+- The user account page provides options for updating user information, uploading a profile picture, and changing the password.
+- The sidebar navigation allows users to switch between different sections.
+- Admin users have access to additional management options.
+- The forms are pre-populated with user data and include validation to prevent errors.
+
+This setup ensures a seamless user experience while maintaining security and flexibility.

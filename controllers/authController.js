@@ -129,6 +129,7 @@ exports.protect = catchAsync(async (req, res, next) => {
   }
   //Grant Access to Protected Route
   req.user = currentUser; // this is for future. we can use it in next middleware.
+  res.locals.user = currentUser;
   next();
 });
 
