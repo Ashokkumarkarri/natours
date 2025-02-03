@@ -1,191 +1,152 @@
-## 021 Building the User Account Page (also some bugs fixes)
+# Updating User Data in Node.js
 
-## Bug Fixes
+In this lecture, we will learn how to allow users to update their name and email address using two different approaches:
 
-Had fixed 2 bugs
+1. **Traditional Form Submission (No JavaScript)**
+2. **API-based Form Submission (Using JavaScript)** (covered in the next lecture)
 
-1. cross : there was some error cause related to cros origen error
-
-2.wrong url cause of that the JWT is not creating
-
-1. pacle bundler issues: the version 1 was used y jonas.
-   got some errors.
-
-```
-    "watch:js": "parcel watch ./public/js/index.js --out-dir ./public/js --out-file bundle.js --public-url ./",
-    "build:js": "parcel build ./public/js/index.js --out-dir ./public/js --out-file bundle.js --public-url ./"
-```
-
-```
-
-//in app.js
-//installed as dev dep
-
-const cors = require('cors'); // Added CORS package
-
-// Enable CORS
-app.use(
-  cors({
-    origin: 'http://localhost:8000', // Replace with your frontend origin
-    credentials: true, // Allow cookies and other credentials
-  }),
-);
-```
-
-```jsx
-//login.js:
-//insted of localhost i had used the complete id addres cuase of that the jwt was not created
-     url: 'http://localhost:8000/api/v1/users/login',
-           withCredentials: true, // This ensures cookies are sent and received
-```
+For this lecture, we will focus on the **traditional method**, which involves submitting the form directly through an HTML `POST` request.
 
 ---
 
-# Building the User Account Page
+## 1. Traditional Form Submission
 
-## Introduction
+This method does not require JavaScript for making API calls. Instead, the form submission happens automatically when the user clicks the submit button.
 
-In this section, we will build the user account page, primarily using concepts we have already learned. The account page allows users to manage their personal information, upload a profile picture, and update their password.
+### 1.1 Setting Up the Form
 
-## Overview of the User Account Page
+We need to define a form with:
 
-The user account page contains the following features:
+- An `action` attribute pointing to our backend route.
+- A `method` attribute set to `POST`.
+- `name` attributes for each input field.
 
-- Navigation menu with user-related options.
-- Forms to update user details such as name and email.
-- Profile picture upload functionality.
-- Password change functionality.
-- Admin-specific options (if the user has an admin role).
+```html
+<form action="/submit-user-data" method="POST">
+  <input type="text" name="name" placeholder="Enter your name" required />
+  <input type="email" name="email" placeholder="Enter your email" required />
+  <button type="submit">Update</button>
+</form>
+```
 
-## Rendering the User Account Page
+### 1.2 How Form Data is Sent
 
-### Controller Function (viewController.js)
+- When the form is submitted, the browser automatically sends a `POST` request to the specified endpoint.
+- The data is sent in **URL-encoded format** (default behavior for forms).
+- The backend will receive the request body containing `name` and `email`.
+
+---
+
+## 2. Setting Up the Backend
+
+Since this method requires a new route and handler, we need to define them in our Express application.
+
+### 2.1 Creating the Route
+
+We define a `POST` route in `routes.js`:
 
 ```jsx
-exports.getAccount = (req, res) => {
-  res.status(200).render('account', {
-    title: 'Your Account',
-  });
+const express = require('express');
+const viewsController = require('../controllers/viewsController');
+const authController = require('../controllers/authController');
+
+const router = express.Router();
+
+// Protect the route so only authenticated users can access it
+router.post(
+  '/submit-user-data',
+  authController.protect,
+  viewsController.updateUserData,
+);
+
+module.exports = router;
+```
+
+### 2.2 Implementing the Controller
+
+In `viewsController.js`, we create the `updateUserData` function:
+
+```jsx
+const User = require('../models/userModel');
+
+exports.updateUserData = async (req, res) => {
+  try {
+    // Ensure request body is received
+    console.log(req.body);
+
+    // Update the user data
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        name: req.body.name,
+        email: req.body.email,
+      },
+      {
+        new: true, // Return updated document
+        runValidators: true, // Validate fields before saving
+      },
+    );
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user: updatedUser,
+      },
+    });
+  } catch (err) {
+    res.status(400).json({
+      status: 'fail',
+      message: err.message,
+    });
+  }
 };
 ```
 
-- This function renders the `account` page when a user navigates to it.
-- The page title is set dynamically.
+### 2.3 Middleware to Parse URL-Encoded Data
 
-## Account Page Template (account.pug)
+Since form data is sent in URL-encoded format, Express needs to parse it using a built-in middleware.
 
-### Extending Base Template
+Add the following line to `app.js`:
 
-```
-extends base
-```
-
-- This ensures that the `account.pug` template inherits the structure from the base template.
-
-### Navigation Menu
-
-The navigation menu is dynamically generated using a mixin.
-
-```html
-mixin navItem(link,text,icon,active) li(class=`${active? 'side-nave--active':
-''}`) a(href=`${link}`) svg use(xlink:href=`img/icons.svg#icon-${icon}`) |
-#{text}
+```jsx
+app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 ```
 
-- The `navItem` mixin creates a menu item with an icon and link.
-- It highlights the active menu item dynamically.
+- `extended: true` allows parsing of more complex data.
+- `limit: '10kb'` ensures the request body does not exceed 10KB.
 
-### Sidebar Navigation
+---
 
-```
-block content
-    main.main
-        .user-view
-            nav.user-view__menu
-                ul.side-nav
-                    +navItem('#','Settings','settings', true)
-                    +navItem('#','My booking','briefcase')
-                    +navItem('#','My reviews','star')
-                    +navItem('#','Billing','settings')
-```
+## 3. Testing the Implementation
 
-- The sidebar menu allows users to navigate between different sections of the account page.
-- The `active` parameter determines which menu item is highlighted.
+### 3.1 Checking Form Submission
 
-### Admin Navigation (Conditional Rendering)
+- Open the browser and fill out the form.
+- Submit the form and inspect the network request in **Developer Tools**.
+- Ensure the form sends a `POST` request to `/submit-user-data` with `name` and `email` in the request body.
 
-```
-- if (user.role==='admin')
-    .admin-nav
-        h5.admin-nav__heading Admin
-        ul.side-nav
-            +navItem('#','Manage tours','map')
-            +navItem('#','Manage users','users')
-            +navItem('#','Manage reviews','star')
-            +navItem('#','Manage bookings','briefcase')
-```
+### 3.2 Handling Errors
 
-- This section is only displayed if the user has an admin role.
-- Provides options to manage tours, users, reviews, and bookings.
+- If the form submission fails, check for errors in the backend logs.
+- Ensure `authController.protect` is correctly implemented to secure the route.
+- Verify that the `User` model correctly updates the database.
 
-## User Account Settings Form
+---
 
-```
-.user-view__form-container
-    h2.heading-secondary.ma-bt-md Your account settings
-    form.form.form-user-data
-        .form__group
-            label.form__label(for='name') Name
-            input#name.form__input(type='text' value=`${user.name}`, required)
-        .form__group.ma-bt-md
-            label.form__label(for='email') Email address
-            input#email.form__input(type='email' value=`${user.email}`, required)
-```
+## 4. Security Considerations
 
-- Users can update their name and email using this form.
-- The values are pre-filled with user data.
-- The `required` attribute ensures that fields cannot be left empty.
+- **Sanitize Input:** Prevent malicious input by validating user data.
+- **Protect the Route:** Ensure only logged-in users can update their data.
+- **Restrict Update Fields:** Only allow `name` and `email` updates to prevent users from modifying sensitive data like passwords.
 
-### Profile Picture Upload
+---
 
-```
-.form__group.form__photo-upload
-    img.form__user-photo(src=`/img/users/${user.photo}` alt='User photo')
-    a.btn-text(href='') Choose new photo
-```
+## 5. Conclusion
 
-- Displays the user's current profile picture.
-- Provides an option to upload a new profile picture.
+In this lecture, we implemented **traditional form submission** in Node.js using:
 
-## Password Change Form
+- HTML forms with `POST` requests.
+- Express routes and middleware to process form data.
+- Securely updating user data in MongoDB.
 
-```
-.user-view__form-container
-    h2.heading-secondary.ma-bt-md Password change
-    form.form.form-user-settings
-        .form__group
-            label.form__label(for='password-current') Current password
-            input#password-current.form__input(type='password' placeholder='••••••••', required, minlength='8')
-        .form__group
-            label.form__label(for='password') New password
-            input#password.form__input(type='password' placeholder='••••••••', required, minlength='8')
-        .form__group.ma-bt-lg
-            label.form__label(for='password-confirm') Confirm password
-            input#password-confirm.form__input(type='password' placeholder='••••••••', required, minlength='8')
-        .form__group.right
-            button.btn.btn--small.btn--green Save password
-```
-
-- Allows users to update their password.
-- Ensures the new password meets a minimum length requirement.
-- Includes a confirmation field to verify the new password.
-- The `Save password` button submits the form.
-
-## Summary
-
-- The user account page provides options for updating user information, uploading a profile picture, and changing the password.
-- The sidebar navigation allows users to switch between different sections.
-- Admin users have access to additional management options.
-- The forms are pre-populated with user data and include validation to prevent errors.
-
-This setup ensures a seamless user experience while maintaining security and flexibility.
+In the next lecture, we will explore a **JavaScript-based approach** for updating user data using AJAX and API calls.
