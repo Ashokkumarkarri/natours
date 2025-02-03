@@ -1,152 +1,142 @@
-# Updating User Data in Node.js
+# 023 Updating User Data with Our API
 
-In this lecture, we will learn how to allow users to update their name and email address using two different approaches:
+# Updating User Data via API in Node.js
 
-1. **Traditional Form Submission (No JavaScript)**
-2. **API-based Form Submission (Using JavaScript)** (covered in the next lecture)
+## Overview
 
-For this lecture, we will focus on the **traditional method**, which involves submitting the form directly through an HTML `POST` request.
+In this section, we will implement functionality to update user data (name and email) through an API call from the front end. We will follow a structured approach similar to the login functionality.
 
----
+## Steps to Implement
 
-## 1. Traditional Form Submission
+### 1. Creating the `updateSettings.js` File
 
-This method does not require JavaScript for making API calls. Instead, the form submission happens automatically when the user clicks the submit button.
+We need to create a new JavaScript file called `updateSettings.js` to handle the API call for updating user data. This file will:
 
-### 1.1 Setting Up the Form
+- Export a function called `updateData`
+- Use Axios to send a `PATCH` request to the server
+- Handle errors properly
+- Show user-friendly alerts for success and failure messages
 
-We need to define a form with:
+### 2. Modifying the Form
 
-- An `action` attribute pointing to our backend route.
-- A `method` attribute set to `POST`.
-- `name` attributes for each input field.
+Before implementing the JavaScript function, we need to adjust the form in our HTML:
 
-```html
-<form action="/submit-user-data" method="POST">
-  <input type="text" name="name" placeholder="Enter your name" required />
-  <input type="email" name="email" placeholder="Enter your email" required />
-  <button type="submit">Update</button>
-</form>
-```
+- Remove the `action` and `method` attributes to prevent form submission via traditional methods.
+- Ensure that the form fields have the appropriate IDs (`name` and `email`).
 
-### 1.2 How Form Data is Sent
+### 3. Implementing the `updateData` Function
 
-- When the form is submitted, the browser automatically sends a `POST` request to the specified endpoint.
-- The data is sent in **URL-encoded format** (default behavior for forms).
-- The backend will receive the request body containing `name` and `email`.
-
----
-
-## 2. Setting Up the Backend
-
-Since this method requires a new route and handler, we need to define them in our Express application.
-
-### 2.1 Creating the Route
-
-We define a `POST` route in `routes.js`:
+### **Code Implementation:**
 
 ```jsx
-const express = require('express');
-const viewsController = require('../controllers/viewsController');
-const authController = require('../controllers/authController');
+import axios from 'axios';
+import { showAlert } from './alert';
 
-const router = express.Router();
-
-// Protect the route so only authenticated users can access it
-router.post(
-  '/submit-user-data',
-  authController.protect,
-  viewsController.updateUserData,
-);
-
-module.exports = router;
-```
-
-### 2.2 Implementing the Controller
-
-In `viewsController.js`, we create the `updateUserData` function:
-
-```jsx
-const User = require('../models/userModel');
-
-exports.updateUserData = async (req, res) => {
+export const updateData = async (name, email) => {
+  console.log('Updating user data...');
   try {
-    // Ensure request body is received
-    console.log(req.body);
-
-    // Update the user data
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user.id,
-      {
-        name: req.body.name,
-        email: req.body.email,
-      },
-      {
-        new: true, // Return updated document
-        runValidators: true, // Validate fields before saving
-      },
-    );
-
-    res.status(200).json({
-      status: 'success',
+    const res = await axios({
+      method: 'PATCH',
+      url: 'http://localhost:8000/api/v1/users/updateMe',
       data: {
-        user: updatedUser,
+        name: name,
+        email: email,
       },
     });
+
+    console.log('Response from server:', res);
+    if (res.data.status === 'success') {
+      showAlert('success', 'Data Updated Successfully');
+    }
   } catch (err) {
-    res.status(400).json({
-      status: 'fail',
-      message: err.message,
-    });
+    console.error('Error updating data:', err);
+    showAlert('error', err.response.data.message);
   }
 };
 ```
 
-### 2.3 Middleware to Parse URL-Encoded Data
+### **Explanation:**
 
-Since form data is sent in URL-encoded format, Express needs to parse it using a built-in middleware.
+- **Import necessary modules**: `axios` for making API calls and `showAlert` for displaying alerts.
+- **Define `updateData` function**:
+  - Takes `name` and `email` as arguments.
+  - Sends a `PATCH` request to `http://localhost:8000/api/v1/users/updateMe`.
+  - Uses `try-catch` for error handling.
+  - Calls `showAlert` to display success or error messages.
 
-Add the following line to `app.js`:
+### 4. Integrating `updateData` into `index.js`
+
+Next, we integrate the function in our main JavaScript file to execute it when the form is submitted.
+
+### **Code Implementation:**
 
 ```jsx
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
+import { updateData } from './updateSettings';
+const userDataForm = document.querySelector('.form-user-data');
+
+if (userDataForm) {
+  userDataForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const name = document.getElementById('name').value;
+    const email = document.getElementById('email').value;
+
+    updateData(name, email);
+  });
+}
 ```
 
-- `extended: true` allows parsing of more complex data.
-- `limit: '10kb'` ensures the request body does not exceed 10KB.
+### **Explanation:**
 
----
+- **Select the user data form**: `document.querySelector('.form-user-data')`.
+- **Add an event listener**:
+  - Prevents the default form submission behavior.
+  - Extracts values from the input fields.
+  - Calls `updateData(name, email)` to trigger the API request.
 
-## 3. Testing the Implementation
+### 5. API Endpoint Details
 
-### 3.1 Checking Form Submission
+- **Endpoint:** `PATCH /api/v1/users/updateMe`
+- **Body Parameters:** `{ name, email }`
+- **Response Structure:**
+  ```jsx
+  {
+    "status": "success",
+    "data": {
+      "user": {
+        "name": "Updated Name",
+        "email": "updated@example.com"
+      }
+    }
+  }
+  ```
+- **Error Handling:** The server sends an error message if the update fails.
 
-- Open the browser and fill out the form.
-- Submit the form and inspect the network request in **Developer Tools**.
-- Ensure the form sends a `POST` request to `/submit-user-data` with `name` and `email` in the request body.
+### 6. Testing the Update Functionality
 
-### 3.2 Handling Errors
+- Navigate to the **user settings page**.
+- Modify the **name** or **email** fields.
+- Click **Save Settings**.
+- If the update is successful, an alert message appears: `Data Updated Successfully`.
+- Refresh the page to confirm persistence of the changes.
 
-- If the form submission fails, check for errors in the backend logs.
-- Ensure `authController.protect` is correctly implemented to secure the route.
-- Verify that the `User` model correctly updates the database.
+### 7. Handling Errors
 
----
+- If an invalid email is entered, an error message appears.
+- Example:
+  ```jsx
+  showAlert('error', 'Invalid email address');
+  ```
+- Future improvements:
+  - Highlighting incorrect input fields.
+  - Using a front-end framework like React or Vue for better UI management.
 
-## 4. Security Considerations
+### Conclusion
 
-- **Sanitize Input:** Prevent malicious input by validating user data.
-- **Protect the Route:** Ensure only logged-in users can update their data.
-- **Restrict Update Fields:** Only allow `name` and `email` updates to prevent users from modifying sensitive data like passwords.
+We successfully implemented user data updates via API using:
 
----
+- `updateSettings.js` for API requests.
+- `index.js` to handle form submission.
+- Proper error handling and user alerts.
 
-## 5. Conclusion
-
-In this lecture, we implemented **traditional form submission** in Node.js using:
-
-- HTML forms with `POST` requests.
-- Express routes and middleware to process form data.
-- Securely updating user data in MongoDB.
-
-In the next lecture, we will explore a **JavaScript-based approach** for updating user data using AJAX and API calls.
+Next, we will extend this functionality to update user passwords.
