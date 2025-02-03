@@ -1,142 +1,147 @@
-# 023 Updating User Data with Our API
+# 024 Updating User Password with Our API
 
-# Updating User Data via API in Node.js
+## Node.js: Updating User Settings (Data & Password)
 
 ## Overview
 
-In this section, we will implement functionality to update user data (name and email) through an API call from the front end. We will follow a structured approach similar to the login functionality.
+In this section, we will enhance our API by implementing a function to update user settings. Instead of creating separate functions for updating user data and passwords, we will combine them into a single function called `updateSettings`. This function will accept an object containing the update data and a `type` parameter to determine whether we are updating user data or the password.
 
 ## Steps to Implement
 
-### 1. Creating the `updateSettings.js` File
+### 1. Creating the `updateSettings` Function
 
-We need to create a new JavaScript file called `updateSettings.js` to handle the API call for updating user data. This file will:
+Instead of having separate functions for updating user data (e.g., name and email) and updating passwords, we create a single function `updateSettings` that:
 
-- Export a function called `updateData`
-- Use Axios to send a `PATCH` request to the server
-- Handle errors properly
-- Show user-friendly alerts for success and failure messages
+- Accepts an object with the data to be updated.
+- Accepts a `type` parameter, which can be either `'data'` or `'password'`.
+- Determines the correct API endpoint based on the `type`.
+- Sends a request to the appropriate endpoint with the data.
 
-### 2. Modifying the Form
-
-Before implementing the JavaScript function, we need to adjust the form in our HTML:
-
-- Remove the `action` and `method` attributes to prevent form submission via traditional methods.
-- Ensure that the form fields have the appropriate IDs (`name` and `email`).
-
-### 3. Implementing the `updateData` Function
-
-### **Code Implementation:**
+### **Code Implementation (updateSettings.js)**
 
 ```jsx
 import axios from 'axios';
 import { showAlert } from './alert';
 
-export const updateData = async (name, email) => {
-  console.log('Updating user data...');
+// type is either 'password' or 'data'
+export const updateSettings = async (data, type) => {
   try {
+    const url =
+      type === 'password'
+        ? 'http://localhost:8000/api/v1/users/updateMyPassword'
+        : 'http://localhost:8000/api/v1/users/updateMe';
+
     const res = await axios({
       method: 'PATCH',
-      url: 'http://localhost:8000/api/v1/users/updateMe',
-      data: {
-        name: name,
-        email: email,
-      },
+      url,
+      data,
     });
 
-    console.log('Response from server:', res);
     if (res.data.status === 'success') {
-      showAlert('success', 'Data Updated Successfully');
+      showAlert('success', `${type.toUpperCase()} updated successfully!`);
     }
   } catch (err) {
-    console.error('Error updating data:', err);
     showAlert('error', err.response.data.message);
   }
 };
 ```
 
-### **Explanation:**
+### 2. Updating User Data
 
-- **Import necessary modules**: `axios` for making API calls and `showAlert` for displaying alerts.
-- **Define `updateData` function**:
-  - Takes `name` and `email` as arguments.
-  - Sends a `PATCH` request to `http://localhost:8000/api/v1/users/updateMe`.
-  - Uses `try-catch` for error handling.
-  - Calls `showAlert` to display success or error messages.
+We use the `updateSettings` function to update user information such as name and email.
 
-### 4. Integrating `updateData` into `index.js`
+### **Steps:**
 
-Next, we integrate the function in our main JavaScript file to execute it when the form is submitted.
+1. Import the `updateSettings` function.
+2. Select the user form elements.
+3. Read input values (name, email) and pass them to `updateSettings`.
 
-### **Code Implementation:**
+### **Code Implementation (Handling Form Submission)**
 
 ```jsx
-import { updateData } from './updateSettings';
-const userDataForm = document.querySelector('.form-user-data');
+import { updateSettings } from './updateSettings';
 
-if (userDataForm) {
-  userDataForm.addEventListener('submit', (e) => {
-    e.preventDefault();
+document.querySelector('.form-user-data').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const form = new FormData();
+  form.append('name', document.getElementById('name').value);
+  form.append('email', document.getElementById('email').value);
 
-    const name = document.getElementById('name').value;
-    const email = document.getElementById('email').value;
-
-    updateData(name, email);
-  });
-}
+  updateSettings(form, 'data');
+});
 ```
 
-### **Explanation:**
+### 3. Updating User Password
 
-- **Select the user data form**: `document.querySelector('.form-user-data')`.
-- **Add an event listener**:
-  - Prevents the default form submission behavior.
-  - Extracts values from the input fields.
-  - Calls `updateData(name, email)` to trigger the API request.
+To ensure security, we require the user to provide their current password along with the new password and confirmation.
 
-### 5. API Endpoint Details
+### **Steps:**
 
-- **Endpoint:** `PATCH /api/v1/users/updateMe`
-- **Body Parameters:** `{ name, email }`
-- **Response Structure:**
-  ```jsx
-  {
-    "status": "success",
-    "data": {
-      "user": {
-        "name": "Updated Name",
-        "email": "updated@example.com"
-      }
-    }
-  }
-  ```
-- **Error Handling:** The server sends an error message if the update fails.
+1. Select the password form elements.
+2. Read input values (current password, new password, confirm password).
+3. Pass the data to `updateSettings`.
+4. Clear the input fields after a successful update.
 
-### 6. Testing the Update Functionality
+### **Code Implementation (Handling Password Update)**
 
-- Navigate to the **user settings page**.
-- Modify the **name** or **email** fields.
-- Click **Save Settings**.
-- If the update is successful, an alert message appears: `Data Updated Successfully`.
-- Refresh the page to confirm persistence of the changes.
+```jsx
+document
+  .querySelector('.form-user-password')
+  .addEventListener('submit', async (e) => {
+    e.preventDefault();
+    document.querySelector('.btn--save-password').textContent = 'Updating...';
 
-### 7. Handling Errors
+    const passwordCurrent = document.getElementById('password-current').value;
+    const password = document.getElementById('password').value;
+    const passwordConfirm = document.getElementById('password-confirm').value;
 
-- If an invalid email is entered, an error message appears.
-- Example:
-  ```jsx
-  showAlert('error', 'Invalid email address');
-  ```
-- Future improvements:
-  - Highlighting incorrect input fields.
-  - Using a front-end framework like React or Vue for better UI management.
+    await updateSettings(
+      { passwordCurrent, password, passwordConfirm },
+      'password',
+    );
 
-### Conclusion
+    document.querySelector('.btn--save-password').textContent = 'Save password';
+    document.getElementById('password-current').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('password-confirm').value = '';
+  });
+```
 
-We successfully implemented user data updates via API using:
+### 4. Handling API Responses
 
-- `updateSettings.js` for API requests.
-- `index.js` to handle form submission.
-- Proper error handling and user alerts.
+- The API requires the following fields for updating passwords:
+  - `passwordCurrent`: The user’s current password.
+  - `password`: The new password.
+  - `passwordConfirm`: Confirmation of the new password.
+- If the update is successful, a success message appears, and the user remains logged in.
+- If an error occurs, it is displayed to the user.
 
-Next, we will extend this functionality to update user passwords.
+### 5. UX Enhancements
+
+To improve user experience, we:
+
+- Show a loading indicator while updating passwords (`Updating...` message on the button).
+- Clear input fields after a successful password update.
+
+### 6. Maintaining Authentication After Password Change
+
+After changing the password:
+
+- A new authentication cookie is issued to keep the user logged in.
+- This happens because the API automatically logs the user in after updating their password.
+
+### 7. Verifying Changes in Postman
+
+- Test the `updateSettings` function in Postman.
+- Ensure correct field names (`passwordCurrent`, `password`, `passwordConfirm`).
+- Check if updates reflect in the database.
+
+## Conclusion
+
+We have successfully created a single function, `updateSettings`, to handle both user data and password updates. This approach optimizes code reuse, improves maintainability, and enhances the user experience. In the next section, we will implement file uploads, email templates, and payments to further enrich our application.
+
+**Next Steps:**
+
+- Implement file uploads.
+- Design email templates.
+- Integrate payment functionality.
