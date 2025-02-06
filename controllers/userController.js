@@ -1,7 +1,40 @@
+const multer = require('multer');
 const User = require('../models/userModel');
 const AppError = require('../utils/appError');
 const catchAsync = require('./../utils/catchAsync');
 const factory = require('./handlerFactory');
+
+// Configure the storage settings for multer
+const multerStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/img/users');
+  },
+  filename: (req, file, cb) => {
+    // Create a unique filename using the user's ID and a timestamp
+    //user-76585654845ab4-654654654654.jpeg
+    const ext = file.mimetype.split('/')[1];
+    cb(null, `user-${req.user.id}-${Date.now()}.${ext}`);
+  },
+});
+
+// Define a filter to allow only image uploads
+const multerFilter = (req, file, cb) => {
+  // Check if the uploaded file is an image
+  if (file.mimetype.startsWith('image')) {
+    // If the file is an image, accept it
+    cb(null, true);
+  } else {
+    // If the file is not an image, reject it with a custom error
+    cb(new AppError('Not an image! please upload only images.', 400), false);
+  }
+};
+
+const upload = multer({
+  storage: multerStorage,
+  fileFilter: multerFilter,
+});
+
+exports.uploadUserPhoto = upload.single('photo');
 
 // filterOBJ function: Filters object keys to allow only specific fields
 // This ensures no unauthorized fields are updated
