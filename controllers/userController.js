@@ -23,6 +23,8 @@ exports.getMe = (req, res, next) => {
 
 // CatchAsync: Utility to handle asynchronous functions and errors
 exports.updateMe = catchAsync(async (req, res, next) => {
+  console.log(req.file);
+  console.log(req.body);
   // Step 1: Prevent password updates through this route
   // If the request body contains password or passwordConfirm, throw an error
   if (req.body.password || req.body.passwordConfirm) {

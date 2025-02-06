@@ -1,147 +1,128 @@
-# 024 Updating User Password with Our API
+# 002 Image Uploads Using Multer\_ Users
 
-## Node.js: Updating User Settings (Data & Password)
+---
 
-## Overview
+### `Note`:
 
-In this section, we will enhance our API by implementing a function to update user settings. Instead of creating separate functions for updating user data and passwords, we will combine them into a single function called `updateSettings`. This function will accept an object containing the update data and a `type` parameter to determine whether we are updating user data or the password.
+- cleaned unwanted console.log
+- implemented meter
 
-## Steps to Implement
+- here we are not uploading this photo to the DB, we will upload to DB in next video. in this video we will only upload the photo to our folder in the file directory.
 
-### 1. Creating the `updateSettings` Function
+---
 
-Instead of having separate functions for updating user data (e.g., name and email) and updating passwords, we create a single function `updateSettings` that:
+# Uploading Images with Multer in Node.js
 
-- Accepts an object with the data to be updated.
-- Accepts a `type` parameter, which can be either `'data'` or `'password'`.
-- Determines the correct API endpoint based on the `type`.
-- Sends a request to the appropriate endpoint with the data.
+## Introduction
 
-### **Code Implementation (updateSettings.js)**
+In this section, we will learn how to upload images using the **Multer** package in a Node.js application. This tutorial will focus on implementing image uploads for user photos. We will:
+
+- Install and configure Multer
+- Set up a middleware to handle file uploads
+- Test the upload functionality using Postman
+
+## Cleaning Up Unnecessary Logs
+
+Before diving into image uploads, let's clean up unnecessary logs in our code. If you have any console logs that are outputting cookies or other irrelevant data, remove them to keep the console output clean and relevant.
+
+## What is Multer?
+
+Multer is a popular **middleware** for handling **multipart/form-data**, which is commonly used for uploading files through a form. Previously, we used **URL-encoded forms** to update user data, requiring special middleware. Similarly, for file uploads, we use Multer to handle **multipart-form data** efficiently.
+
+## Installing Multer
+
+To use Multer, we need to install it in our Node.js project:
 
 ```jsx
-import axios from 'axios';
-import { showAlert } from './alert';
-
-// type is either 'password' or 'data'
-export const updateSettings = async (data, type) => {
-  try {
-    const url =
-      type === 'password'
-        ? 'http://localhost:8000/api/v1/users/updateMyPassword'
-        : 'http://localhost:8000/api/v1/users/updateMe';
-
-    const res = await axios({
-      method: 'PATCH',
-      url,
-      data,
-    });
-
-    if (res.data.status === 'success') {
-      showAlert('success', `${type.toUpperCase()} updated successfully!`);
-    }
-  } catch (err) {
-    showAlert('error', err.response.data.message);
-  }
-};
+npm install multer
 ```
 
-### 2. Updating User Data
+At the time of writing, the version being used is **1.4.1**. If you run into issues, ensure you are using the same version.
 
-We use the `updateSettings` function to update user information such as name and email.
+## Configuring Multer
 
-### **Steps:**
+Once installed, we need to configure Multer. Start by requiring the package:
 
-1. Import the `updateSettings` function.
-2. Select the user form elements.
-3. Read input values (name, email) and pass them to `updateSettings`.
+```
+const multer = require('multer');
+```
 
-### **Code Implementation (Handling Form Submission)**
+Now, let's configure a Multer instance:
 
-```jsx
-import { updateSettings } from './updateSettings';
-
-document.querySelector('.form-user-data').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const form = new FormData();
-  form.append('name', document.getElementById('name').value);
-  form.append('email', document.getElementById('email').value);
-
-  updateSettings(form, 'data');
+```
+const upload = multer({
+  dest: 'public/images/users'
 });
 ```
 
-### 3. Updating User Password
+### Explanation:
 
-To ensure security, we require the user to provide their current password along with the new password and confirmation.
+- `multer()` initializes the Multer middleware.
+- The `dest` option specifies the directory where uploaded files will be stored (`public/images/users`).
+- Without specifying a destination, Multer stores the file in memory (not in the file system).
+- Images are **not directly uploaded into the database**; instead, we store them in the file system and save their **file path** in the database.
 
-### **Steps:**
+## Implementing Image Uploads in the `Update Me` Route
 
-1. Select the password form elements.
-2. Read input values (current password, new password, confirm password).
-3. Pass the data to `updateSettings`.
-4. Clear the input fields after a successful update.
+We will allow users to upload a **photo** when updating their profile. Modify the `Update Me` route to include Multer as middleware:
 
-### **Code Implementation (Handling Password Update)**
+```
+app.patch('/updateMe', upload.single('photo'), (req, res) => {
+  console.log(req.file);  // Logs file information
+  console.log(req.body);  // Logs other form fields
 
-```jsx
-document
-  .querySelector('.form-user-password')
-  .addEventListener('submit', async (e) => {
-    e.preventDefault();
-    document.querySelector('.btn--save-password').textContent = 'Updating...';
-
-    const passwordCurrent = document.getElementById('password-current').value;
-    const password = document.getElementById('password').value;
-    const passwordConfirm = document.getElementById('password-confirm').value;
-
-    await updateSettings(
-      { passwordCurrent, password, passwordConfirm },
-      'password',
-    );
-
-    document.querySelector('.btn--save-password').textContent = 'Save password';
-    document.getElementById('password-current').value = '';
-    document.getElementById('password').value = '';
-    document.getElementById('password-confirm').value = '';
-  });
+  res.send('File uploaded successfully');
+});
 ```
 
-### 4. Handling API Responses
+### Explanation:
 
-- The API requires the following fields for updating passwords:
-  - `passwordCurrent`: The user’s current password.
-  - `password`: The new password.
-  - `passwordConfirm`: Confirmation of the new password.
-- If the update is successful, a success message appears, and the user remains logged in.
-- If an error occurs, it is displayed to the user.
+- `upload.single('photo')` is a **Multer middleware** that processes a single file upload.
+- The `'photo'` argument refers to the **form field name** that holds the uploaded file.
+- Multer will extract the file and attach its details to `req.file`.
+- `req.body` will still contain other form data except for the file itself.
 
-### 5. UX Enhancements
+## Testing the Image Upload using Postman
 
-To improve user experience, we:
+Since we don't have a frontend form yet, we will use **Postman** to test the API:
 
-- Show a loading indicator while updating passwords (`Updating...` message on the button).
-- Clear input fields after a successful password update.
+1. **Open Postman** and select the `PATCH` method.
+2. Enter the API endpoint: `http://localhost:3000/api/v1/users/updateMe`.
+3. Navigate to the **Body** tab and select **form-data**.
+4. Add a new key:
+   - **Key:** `name`, **Value:** `New Name` (text field).
+5. Add another key:
+   - **Key:** `photo`, **Type:** `File`, **Choose File:** Select an image file.
+6. Click **Send**.
 
-### 6. Maintaining Authentication After Password Change
+### Expected Response:
 
-After changing the password:
+- The file is stored in `public/images/users/`.
+- The console logs `req.file` with the following details:
+  ```
+  {
+    "fieldname": "photo",
+    "originalname": "profile.jpg",
+    "encoding": "7bit",
+    "mimetype": "image/jpeg",
+    "destination": "public/images/users",
+    "filename": "xyz123",
+    "path": "public/images/users/xyz123",
+    "size": 102400
+  }
+  ```
+- The body only contains the `name` field, as Multer processes files separately.
 
-- A new authentication cookie is issued to keep the user logged in.
-- This happens because the API automatically logs the user in after updating their password.
+## Verifying File Upload
 
-### 7. Verifying Changes in Postman
+Navigate to the `public/images/users/` folder to confirm the uploaded image is present. However, the file may not have an extension (e.g., `.jpg`, `.png`), making it unreadable. This will be addressed in the next section.
 
-- Test the `updateSettings` function in Postman.
-- Ensure correct field names (`passwordCurrent`, `password`, `passwordConfirm`).
-- Check if updates reflect in the database.
+## Next Steps
 
-## Conclusion
+In the next section, we will:
 
-We have successfully created a single function, `updateSettings`, to handle both user data and password updates. This approach optimizes code reuse, improves maintainability, and enhances the user experience. In the next section, we will implement file uploads, email templates, and payments to further enrich our application.
+- Rename uploaded files to maintain original extensions.
+- Store file paths in the database.
+- Enhance our upload functionality with additional options.
 
-**Next Steps:**
-
-- Implement file uploads.
-- Design email templates.
-- Integrate payment functionality.
+Stay tuned!
