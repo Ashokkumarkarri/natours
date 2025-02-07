@@ -1,21 +1,24 @@
 const multer = require('multer');
+const sharp = require('sharp'); //image processing library for node.js
 const User = require('../models/userModel');
 const AppError = require('../utils/appError');
 const catchAsync = require('./../utils/catchAsync');
 const factory = require('./handlerFactory');
 
-// Configure the storage settings for multer
-const multerStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'public/img/users');
-  },
-  filename: (req, file, cb) => {
-    // Create a unique filename using the user's ID and a timestamp
-    //user-76585654845ab4-654654654654.jpeg
-    const ext = file.mimetype.split('/')[1];
-    cb(null, `user-${req.user.id}-${Date.now()}.${ext}`);
-  },
-});
+// // Configure the storage settings for multer
+// const multerStorage = multer.diskStorage({
+//   destination: (req, file, cb) => {
+//     cb(null, 'public/img/users');
+//   },
+//   filename: (req, file, cb) => {
+//     // Create a unique filename using the user's ID and a timestamp
+//     //user-76585654845ab4-654654654654.jpeg
+//     const ext = file.mimetype.split('/')[1];
+//     cb(null, );
+//   },
+// });
+
+const multerStorage = multer.memoryStorage(); //store the image as a buffer in memory instead of saving it to the disk.
 
 // Define a filter to allow only image uploads
 const multerFilter = (req, file, cb) => {
@@ -35,6 +38,19 @@ const upload = multer({
 });
 
 exports.uploadUserPhoto = upload.single('photo');
+
+exports.resizeUserPhoto = async (req, res, next) => {
+  if (!req.file) return next();
+  req.file.filename = `user-${req.user.id}-${Date.now()}.jpeg`; //we set the filename here so that we can use it in the next middleware.
+  // Resize the image to 500x500 pixels using sharp library and convert it to jpeg format
+  // The image is stored in the req.file.buffer, which is the image buffer
+  await sharp(req.file.buffer)
+    .resize(500, 500)
+    .toFormat('jpeg')
+    .jpeg({ quality: 90 })
+    .toFile(`public/img/users/${req.file.filename}`);
+  next();
+};
 
 // filterOBJ function: Filters object keys to allow only specific fields
 // This ensures no unauthorized fields are updated

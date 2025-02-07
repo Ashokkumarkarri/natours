@@ -1,93 +1,132 @@
-# 004 Saving Image Name to Database
-
----
-
-## Handling User Profile Photos in a Node.js Application
+# Image Processing and Manipulation in Node.js
 
 ## Overview
 
-In this section, we will discuss how to handle user profile photos in a Node.js application. We will cover how to update user profile images, set a default photo for new users, and handle image uploads efficiently.
+In this lesson, we will learn how to process and manipulate images in a Node.js application. Specifically, we will:
+
+- Resize and convert uploaded images.
+- Ensure that all uploaded images are square to maintain consistency in UI display.
+- Use middleware to handle image processing before updating user data.
+- Utilize the `sharp` package for efficient image manipulation.
 
 ---
 
-## Updating the User Profile Photo
+## Problem Statement
 
-When a user updates their profile, we need to ensure that the uploaded image is saved properly in our database. This process involves:
+- Our UI assumes that uploaded images are squares so they can be displayed as circles.
+- However, real-world user uploads rarely come in a perfect square format.
+- We need a solution to automatically resize uploaded images to a square format before updating user data.
 
-1. **Filtering the Incoming Data**
-   - We use a `filteredBody` object to store only the allowed fields (e.g., name and email) from `req.body`.
-   - If an image file is uploaded, we must also include it in `filteredBody`.
-2. **Storing the Image Filename**
-   - Instead of storing the full file path, we only store the image filename in the database.
-   - This ensures that we maintain a clean and structured database while keeping the storage logic simple.
+## Approach
 
-### Implementation:
+1. Implement a middleware function (`resizeUserPhoto`) to handle image processing.
+2. Modify the existing upload logic to store images in memory instead of directly saving them to disk.
+3. Use the `sharp` library to:
+   - Resize images to a 500x500 square.
+   - Convert them to JPEG format with a 90% quality setting.
+   - Save the processed image to disk.
 
-### Update User Middleware (`userController.js`)
+---
 
-```js
-if (req.file) filteredBody.photo = req.file.filename;
+## Step-by-Step Implementation
+
+### 1. Installing `sharp`
+
+Before using `sharp`, we need to install it:
+
+```
+npm install sharp
 ```
 
-- Here, we check if a file was uploaded (`req.file` exists).
-- If a file is present, we assign `filteredBody.photo` to `req.file.filename`.
-- This means that when the user uploads an image, the filename will be stored in our database under the `photo` field.
+### 2. Creating the Middleware Function
 
-### Testing the Update:
+We define a middleware function `resizeUserPhoto` in our user controller to handle image resizing and conversion.
 
-- After making this change, save the file and try updating the profile picture through the application.
-- The uploaded image's filename should be correctly saved and displayed.
-- Console logs related to debugging can now be removed.
+### **Middleware: `resizeUserPhoto`**
 
----
+```jsx
+const sharp = require('sharp');
 
-## Setting a Default Profile Picture
+exports.resizeUserPhoto = async (req, res, next) => {
+  if (!req.file) return next(); // If no file is uploaded, proceed to next middleware
 
-New users who sign up will not have a profile picture initially. To handle this, we set a default image (`default.jpg`).
+  req.file.filename = `user-${req.user.id}.jpeg`; // Define a new filename
 
-### Implementation:
+  await sharp(req.file.buffer) // Use buffer instead of reading from disk
+    .resize(500, 500) // Resize to 500x500 pixels
+    .toFormat('jpeg') // Convert to JPEG format
+    .jpeg({ quality: 90 }) // Set JPEG quality to 90%
+    .toFile(`public/img/users/${req.file.filename}`); // Save to disk
 
-### User Model (`userModel.js`)
-
-```js
-photo: {
-  type: String,
-  default: 'default.jpg',
-},
+  next(); // Proceed to the next middleware
+};
 ```
 
-- The `photo` field is of type `String`.
-- We set a default value of `'default.jpg'`.
-- This ensures that new users who don’t upload a photo will have a placeholder image until they update their profile.
+### 3. Updating Multer Storage Configuration
 
-### Testing the Default Profile Picture:
+To store the uploaded file in memory instead of writing it directly to disk, we modify our `multer` storage settings:
 
-1. Create a new user.
-2. Log in using the newly created account.
-3. Check the profile picture.
-   - It should display the default avatar (`default.jpg`).
+### **Multer Storage Configuration**
 
----
+```jsx
+const multer = require('multer');
 
-## Handling Large Image Uploads
+const multerStorage = multer.memoryStorage();
+```
 
-What if a user uploads an image that is too large or not in the correct format?
+This change ensures that the uploaded file is stored as a buffer (`req.file.buffer`), allowing `sharp` to process it before saving.
 
-- If the uploaded image is too large (e.g., `10,000 x 10,000` pixels), it could cause performance issues.
-- If the image is not a square, it might not display correctly in the UI.
+### 4. Adding Middleware to the Route
 
-### Solution:
+We integrate `resizeUserPhoto` into our route middleware stack. This ensures image processing occurs before user data updates:
 
-- **Resize the image** to fit the application's required dimensions.
-- **Convert the image format** if needed.
-- This will be covered in the next steps.
+### **User Routes (`userRoutes.js`)**
+
+```jsx
+router.patch(
+  '/updateMe',
+  uploadController.uploadUserPhoto,
+  userController.resizeUserPhoto,
+  userController.updateMe,
+);
+```
+
+Here’s the execution order:
+
+1. `uploadUserPhoto` handles the file upload.
+2. `resizeUserPhoto` processes the image.
+3. `updateMe` updates the user's profile.
+
+### 5. Testing Image Upload and Processing
+
+To test the implementation:
+
+- Use **Postman** to send a PATCH request to `/updateMe` with an image file.
+- The server will:
+  - Resize the image to **500x500 px**.
+  - Convert it to **JPEG**.
+  - Save it to `public/img/users/`.
+- The updated image should now be reflected in the UI.
+
+### 6. Verifying the Output
+
+- Check the `public/img/users/` directory to see if the processed image is stored correctly.
+- Open the image to confirm that it is **500x500 px** and in **JPEG** format.
+- Observe reduced file size due to compression.
 
 ---
 
 ## Summary
 
-- Users can now update their profile pictures, and the uploaded image’s filename is stored in the database.
-- If a user does not upload a photo, a default avatar (`default.jpg`) is used.
-- The next step is to implement image resizing and formatting to optimize performance and maintain a consistent UI.
+1. **Problem**: Users upload images in various aspect ratios, but we need squares.
+2. **Solution**: Implement a middleware to resize images using `sharp`.
+3. **Implementation**:
+   - Modify `multer` to store images in memory.
+   - Use `sharp` to resize, format, and save images.
+   - Add middleware in the route before updating user data.
+4. **Outcome**:
+   - All images are stored as **500x500 px JPEGs**.
+   - Storage is optimized using memory buffers before writing to disk.
+   - The user experience remains consistent with circular profile images.
 
-These updates ensure a more polished and real-world user experience in our application.
+This approach ensures efficient and automatic image processing in our Node.js application. 🚀
