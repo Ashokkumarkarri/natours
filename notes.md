@@ -1,134 +1,93 @@
-# 003 Configuring Multer
+# 004 Saving Image Name to Database
 
 ---
 
-## Configuring Multer for Image Uploads in Node.js
+## Handling User Profile Photos in a Node.js Application
 
 ## Overview
 
-Multer is a middleware for handling multipart/form-data, primarily used for uploading files in Node.js applications.
-In this section, we will configure Multer to:
+In this section, we will discuss how to handle user profile photos in a Node.js application. We will cover how to update user profile images, set a default photo for new users, and handle image uploads efficiently.
 
-1. Assign better filenames to uploaded images.
-2. Restrict uploads to only image files.
-3. Move Multer-related logic from routes to controllers for cleaner code.
+---
 
-## Moving Multer Configuration to the Controller
+## Updating the User Profile Photo
 
-To maintain cleaner code, all Multer-related logic should be handled in the controller instead of the router.
+When a user updates their profile, we need to ensure that the uploaded image is saved properly in our database. This process involves:
 
-### Steps:
+1. **Filtering the Incoming Data**
+   - We use a `filteredBody` object to store only the allowed fields (e.g., name and email) from `req.body`.
+   - If an image file is uploaded, we must also include it in `filteredBody`.
+2. **Storing the Image Filename**
+   - Instead of storing the full file path, we only store the image filename in the database.
+   - This ensures that we maintain a clean and structured database while keeping the storage logic simple.
 
-1. **Move Multer setup from the router to the controller**
-2. **Import the Multer package**
-3. **Create a middleware for handling uploads**
+### Implementation:
 
-```jsx
-const multer = require('multer');
+### Update User Middleware (`userController.js`)
 
-// Define the upload middleware
-exports.uploadUserPhoto = multer().single('photo');
+```js
+if (req.file) filteredBody.photo = req.file.filename;
 ```
 
-This middleware function is named `uploadUserPhoto` for clarity and will be used in the controller.
+- Here, we check if a file was uploaded (`req.file` exists).
+- If a file is present, we assign `filteredBody.photo` to `req.file.filename`.
+- This means that when the user uploads an image, the filename will be stored in our database under the `photo` field.
 
-## Configuring Multer Storage and File Filtering
+### Testing the Update:
 
-Multer allows two storage options:
+- After making this change, save the file and try updating the profile picture through the application.
+- The uploaded image's filename should be correctly saved and displayed.
+- Console logs related to debugging can now be removed.
 
-- **Disk Storage**: Saves files directly to the filesystem.
-- **Memory Storage**: Stores files as a buffer in memory.
+---
 
-For now, we will use **disk storage** to persist uploaded images.
+## Setting a Default Profile Picture
 
-### 1. Setting Up Multer Storage
+New users who sign up will not have a profile picture initially. To handle this, we set a default image (`default.jpg`).
 
-```jsx
-const multerStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'dev-data/images'); // Define the folder where images will be stored
-  },
-  filename: (req, file, cb) => {
-    const extension = file.mimetype.split('/')[1]; // Extract file extension
-    cb(null, `user-${req.user.id}-${Date.now()}.${extension}`); // Generate unique filename
-  },
-});
+### Implementation:
+
+### User Model (`userModel.js`)
+
+```js
+photo: {
+  type: String,
+  default: 'default.jpg',
+},
 ```
 
-### Explanation:
+- The `photo` field is of type `String`.
+- We set a default value of `'default.jpg'`.
+- This ensures that new users who don’t upload a photo will have a placeholder image until they update their profile.
 
-- **`destination`**: Specifies where to store files. This function accepts `req`, `file`, and a callback `cb`.
-  - `cb(null, 'dev-data/images')`: Calls the callback with `null` for no error and the folder path.
-- **`filename`**: Defines the file naming convention.
-  - Extracts the file extension from `mimetype`.
-  - Generates a unique filename using the user’s ID and a timestamp.
+### Testing the Default Profile Picture:
 
-### 2. Setting Up Multer File Filter
+1. Create a new user.
+2. Log in using the newly created account.
+3. Check the profile picture.
+   - It should display the default avatar (`default.jpg`).
 
-To ensure only image files are uploaded, we use a filter:
+---
 
-```jsx
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true); // Accept the file
-  } else {
-    cb(new AppError('Not an image! Please upload only images.', 400), false); // Reject the file
-  }
-};
-```
+## Handling Large Image Uploads
 
-### Explanation:
+What if a user uploads an image that is too large or not in the correct format?
 
-- Checks if the file’s `mimetype` starts with `'image'`.
-- If true, passes `null` for no error and `true` to accept the file.
-- If false, rejects the file with an error message.
+- If the uploaded image is too large (e.g., `10,000 x 10,000` pixels), it could cause performance issues.
+- If the image is not a square, it might not display correctly in the UI.
 
-### 3. Creating the Upload Middleware
+### Solution:
 
-Now, we configure Multer using the defined storage and filter:
+- **Resize the image** to fit the application's required dimensions.
+- **Convert the image format** if needed.
+- This will be covered in the next steps.
 
-```jsx
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-```
+---
 
-Finally, we export a middleware for uploading single files:
+## Summary
 
-```jsx
-exports.uploadUserPhoto = upload.single('photo');
-```
+- Users can now update their profile pictures, and the uploaded image’s filename is stored in the database.
+- If a user does not upload a photo, a default avatar (`default.jpg`) is used.
+- The next step is to implement image resizing and formatting to optimize performance and maintain a consistent UI.
 
-## Implementing in Routes
-
-Now, use `uploadUserPhoto` in the router:
-
-```jsx
-const userController = require('../controllers/userController');
-router.post(
-  '/uploadPhoto',
-  userController.uploadUserPhoto,
-  userController.processUpload,
-);
-```
-
-## Testing the Implementation
-
-### 1. Uploading an Image
-
-- Use **Postman** to send a `POST` request with a valid image file.
-- Expect a successful upload and a correctly named file in `dev-data/images`.
-
-### 2. Uploading a Non-Image File
-
-- Try uploading a JSON file or another non-image format.
-- Expect a `400` error: _"Not an image! Please upload only images."_
-
-## Conclusion
-
-- We successfully configured Multer to store images with unique filenames.
-- We implemented filtering to restrict uploads to image files only.
-- We structured the code cleanly by handling Multer logic inside the controller.
-
-With this setup, your Node.js app is now capable of handling secure and efficient image uploads!
+These updates ensure a more polished and real-world user experience in our application.
