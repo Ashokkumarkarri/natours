@@ -12942,12 +12942,12 @@ if (loginForm) {
 if (userDataForm) {
   userDataForm.addEventListener('submit', function (e) {
     e.preventDefault(); //this prevent's the form,from loading any other page
-    var email = document.getElementById('email').value;
-    var name = document.getElementById('name').value;
-    (0, _updateSettings.updateSettings)({
-      name: name,
-      email: email
-    }, 'data');
+    var form = new FormData();
+    // form.append('name','value') //this is how we append data to the form
+    form.append('email', document.getElementById('email').value);
+    form.append('name', document.getElementById('name').value);
+    form.append('photo', document.getElementById('photo').files[0]); //files is an array, so we need to get the first element of the array
+    (0, _updateSettings.updateSettings)(form, 'data');
   });
 }
 if (logOutBtn) logOutBtn.addEventListener('click', _login.logout);
@@ -13011,7 +13011,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57277" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "57669" + '/');
   ws.onmessage = function (event) {
     checkedAssets = {};
     assetsToAccept = [];

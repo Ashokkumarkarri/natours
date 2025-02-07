@@ -1,132 +1,85 @@
-# Image Processing and Manipulation in Node.js
+# 006 Adding Image Uploads to Form
+
+---
+
+## Uploading User Photos in a Node.js Web Application
 
 ## Overview
 
-In this lesson, we will learn how to process and manipulate images in a Node.js application. Specifically, we will:
-
-- Resize and convert uploaded images.
-- Ensure that all uploaded images are square to maintain consistency in UI display.
-- Use middleware to handle image processing before updating user data.
-- Utilize the `sharp` package for efficient image manipulation.
+In this lesson, we will implement a feature that allows users to upload their photos directly from the website. The process involves updating the frontend to include a file input field, handling file selection using JavaScript, and sending the selected file to the backend using FormData and an API call.
 
 ---
 
-## Problem Statement
+## Steps to Implement File Upload
 
-- Our UI assumes that uploaded images are squares so they can be displayed as circles.
-- However, real-world user uploads rarely come in a perfect square format.
-- We need a solution to automatically resize uploaded images to a square format before updating user data.
+### 1. Updating the HTML (Pug Template)
 
-## Approach
+The first step is to modify the HTML form to allow users to select a file. In Pug (our templating engine), we replace the placeholder link with an input element of type `file`.
 
-1. Implement a middleware function (`resizeUserPhoto`) to handle image processing.
-2. Modify the existing upload logic to store images in memory instead of directly saving them to disk.
-3. Use the `sharp` library to:
-   - Resize images to a 500x500 square.
-   - Convert them to JPEG format with a 90% quality setting.
-   - Save the processed image to disk.
+### **Modification in `accounts.pug`**
+
+```
+input.form__upload(type='file' accept='image/*' id='photo' name='photo')
+label(for='photo') Choose new photo
+```
+
+### **Explanation:**
+
+- `type='file'` - Specifies that this input is for file selection.
+- `accept='image/*'` - Ensures only image files can be selected.
+- `id='photo'` - Assigns an ID for JavaScript access.
+- `name='photo'` - Ensures the backend recognizes the field.
+- The `label` element, when clicked, triggers the file input.
 
 ---
 
-## Step-by-Step Implementation
+### 2. Handling Form Submission with JavaScript
 
-### 1. Installing `sharp`
+Once we have the input field, we need to handle the submission process using JavaScript. This includes preventing the default form submission, extracting the selected file, and sending it to the backend using `FormData`.
 
-Before using `sharp`, we need to install it:
-
-```
-npm install sharp
-```
-
-### 2. Creating the Middleware Function
-
-We define a middleware function `resizeUserPhoto` in our user controller to handle image resizing and conversion.
-
-### **Middleware: `resizeUserPhoto`**
+### **Modification in `index.js` (Frontend JavaScript)**
 
 ```jsx
-const sharp = require('sharp');
+if (userDataForm) {
+  userDataForm.addEventListener('submit', (e) => {
+    e.preventDefault(); // Prevents form from reloading the page
 
-exports.resizeUserPhoto = async (req, res, next) => {
-  if (!req.file) return next(); // If no file is uploaded, proceed to next middleware
+    const form = new FormData();
 
-  req.file.filename = `user-${req.user.id}.jpeg`; // Define a new filename
+    // Append form data fields
+    form.append('name', document.getElementById('name').value);
+    form.append('email', document.getElementById('email').value);
+    form.append('photo', document.getElementById('photo').files[0]);
 
-  await sharp(req.file.buffer) // Use buffer instead of reading from disk
-    .resize(500, 500) // Resize to 500x500 pixels
-    .toFormat('jpeg') // Convert to JPEG format
-    .jpeg({ quality: 90 }) // Set JPEG quality to 90%
-    .toFile(`public/img/users/${req.file.filename}`); // Save to disk
-
-  next(); // Proceed to the next middleware
-};
+    updateSettings(form, 'data');
+  });
+}
 ```
 
-### 3. Updating Multer Storage Configuration
+### **Explanation:**
 
-To store the uploaded file in memory instead of writing it directly to disk, we modify our `multer` storage settings:
-
-### **Multer Storage Configuration**
-
-```jsx
-const multer = require('multer');
-
-const multerStorage = multer.memoryStorage();
-```
-
-This change ensures that the uploaded file is stored as a buffer (`req.file.buffer`), allowing `sharp` to process it before saving.
-
-### 4. Adding Middleware to the Route
-
-We integrate `resizeUserPhoto` into our route middleware stack. This ensures image processing occurs before user data updates:
-
-### **User Routes (`userRoutes.js`)**
-
-```jsx
-router.patch(
-  '/updateMe',
-  uploadController.uploadUserPhoto,
-  userController.resizeUserPhoto,
-  userController.updateMe,
-);
-```
-
-Here’s the execution order:
-
-1. `uploadUserPhoto` handles the file upload.
-2. `resizeUserPhoto` processes the image.
-3. `updateMe` updates the user's profile.
-
-### 5. Testing Image Upload and Processing
-
-To test the implementation:
-
-- Use **Postman** to send a PATCH request to `/updateMe` with an image file.
-- The server will:
-  - Resize the image to **500x500 px**.
-  - Convert it to **JPEG**.
-  - Save it to `public/img/users/`.
-- The updated image should now be reflected in the UI.
-
-### 6. Verifying the Output
-
-- Check the `public/img/users/` directory to see if the processed image is stored correctly.
-- Open the image to confirm that it is **500x500 px** and in **JPEG** format.
-- Observe reduced file size due to compression.
+- `e.preventDefault();` - Prevents the default form submission behavior.
+- `new FormData();` - Creates a `FormData` object to send data as `multipart/form-data`.
+- `form.append('fieldName', value);` - Adds form fields dynamically.
+- `document.getElementById('photo').files[0]` - Extracts the first file from the input field.
+- `updateSettings(form, 'data');` - Sends the form data to the backend.
 
 ---
 
-## Summary
+### **Why Use `FormData` for Image Uploads?**
 
-1. **Problem**: Users upload images in various aspect ratios, but we need squares.
-2. **Solution**: Implement a middleware to resize images using `sharp`.
-3. **Implementation**:
-   - Modify `multer` to store images in memory.
-   - Use `sharp` to resize, format, and save images.
-   - Add middleware in the route before updating user data.
-4. **Outcome**:
-   - All images are stored as **500x500 px JPEGs**.
-   - Storage is optimized using memory buffers before writing to disk.
-   - The user experience remains consistent with circular profile images.
+- **Files can't be sent as JSON** – Browsers and servers require `multipart/form-data` to handle file uploads.
+- **Allows sending both files and text fields** in a single request.
+- **Encodes binary data properly**, ensuring images are uploaded correctly.
 
-This approach ensures efficient and automatic image processing in our Node.js application. 🚀
+### **Why Does Multer Use `FormData`?**
+
+- **Multer extracts files from `multipart/form-data`** requests.
+- **Parses and stores files** in a designated location (disk, memory, or cloud).
+- **Adds file details to `req.file` or `req.files`**, making them accessible in Node.js.
+
+### **Conclusion**
+
+✅ Use `FormData` to send images.
+
+✅ Multer reads `multipart/form-data` to handle and store uploads efficiently.

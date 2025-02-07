@@ -32,9 +32,12 @@ if (loginForm) {
 if (userDataForm) {
   userDataForm.addEventListener('submit', (e) => {
     e.preventDefault(); //this prevent's the form,from loading any other page
-    const email = document.getElementById('email').value;
-    const name = document.getElementById('name').value;
-    updateSettings({ name, email }, 'data');
+    const form = new FormData();
+    // form.append('name','value') //this is how we append data to the form
+    form.append('email', document.getElementById('email').value);
+    form.append('name', document.getElementById('name').value);
+    form.append('photo', document.getElementById('photo').files[0]); //files is an array, so we need to get the first element of the array
+    updateSettings(form, 'data');
   });
 }
 
