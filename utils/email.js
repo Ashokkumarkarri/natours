@@ -42,7 +42,7 @@ module.exports = class Email {
       to: this.to,
       subject: subject,
       html: html,
-      text: htmlToText.fromString(html),
+      text: htmlToText.convert(html),
       // html:
     };
 

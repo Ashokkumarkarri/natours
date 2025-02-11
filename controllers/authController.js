@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('./../models/userModel');
 const catchAsync = require('./../utils/catchAsync');
 const AppError = require('./../utils/appError');
-const sendEmail = require('./../utils/email');
+const Email = require('./../utils/email');
 
 const signToken = (id) => {
   return jwt.sign({ id: id }, process.env.JWT_SECRET, {
@@ -51,10 +51,10 @@ exports.signup = catchAsync(async (req, res, next) => {
     passwordChangedAt: req.body.passwordChangedAt,
     role: req.body.role,
   });
-
-  //.sing(payload,secret,{options})
-  //payload: all the data that we want to store.
-
+  // const url = 'http://localhost:8000/me';
+  const url = `${req.protocol}://${req.get('host')}/me`;
+  console.log(url);
+  await new Email(newUser, url).sendWelcome();
   createSendToken(newUser, 201, res);
 });
 
@@ -200,12 +200,12 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nif you don't forgot your password, please Ignore this email.`;
 
   try {
-    //sendEmail function is an async function, which means it will return a promise and we need to handel that promise
-    await sendEmail({
-      email: user.email,
-      subject: 'Your password reset token for (valid only for 10 mins)',
-      message,
-    });
+    // //sendEmail function is an async function, which means it will return a promise and we need to handel that promise
+    // await sendEmail({
+    //   email: user.email,
+    //   subject: 'Your password reset token for (valid only for 10 mins)',
+    //   message,
+    // });
     res.status(200).json({
       status: 'success',
       message: 'Token sent to email!',

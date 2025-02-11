@@ -1,121 +1,130 @@
-## Node.js - Sending Emails with Pug and SendGrid
+# 010 Email Templates with Pug\_ Welcome Emails
 
 ---
 
-## Introduction
+## Sending Emails with Pug in Node.js
 
-In this section, we will enhance our email handling capabilities in Node.js by creating email templates using **Pug** and sending real emails with **SendGrid**. We previously implemented a basic email handler for password resets, but now we will build a **robust, scalable email service** that can handle multiple email templates and use different transporters for development and production environments.
+## Overview
 
-## Steps to Implement the Email Service
+In this guide, we will learn how to use **Pug** to create a dynamic email template and send a welcome email based on that template. The email template will include a personalized message and a styled button. We will also discuss inlining CSS, structuring reusable email templates, and dynamically inserting user data.
 
-### 1. Creating the Email Class
+---
 
-We will create an `Email` class inside the `utils` folder. This class will:
+## 1. Creating the Email Template
 
-- Handle email sending.
-- Support multiple email templates.
-- Work with both development and production environments.
+We will use **Pug** to create an HTML email template. The template file is named `welcome.pug` and is stored in the `dev-data/templates/` directory.
 
-### Defining the `Email` Class
+### Steps:
 
-We start by defining the class and exporting it:
+1. **Copy an existing email template**
 
-```jsx
-module.exports = class Email {
-  constructor(user, url) {
-    this.to = user.email;
-    this.firstName = user.name.split(' ')[0]; // Extract first name
-    this.url = url;
-    this.from = `Natours <${process.env.EMAIL_FROM}>`;
-  }
-};
+   - The email design is adapted from an HTML template.
+   - The HTML template is converted into **Pug** using an online tool: [HTML to Pug Converter](https://html2pug.com/).
+
+     ```
+     //- Email template adapted from https://github.com/leemunroe/responsive-html-email-template
+     //- Converted from HTML using https://html2pug.now.sh/
+
+     ```
+
+   - This allows quick conversion of pre-existing HTML pages into **Pug** format.
+
+2. **Inline CSS**
+   - Email clients require **inline styles** for proper rendering.
+   - The template includes a large amount of CSS directly in the file.
+   - To keep the template clean, we will extract the styles into a separate file.
+3. **Extracting Styles to a Separate File**
+   - Create a new file `_style.pug`.
+   - Move all inline CSS from `welcome.pug` to `_style.pug`.
+   - Use the `include` keyword in Pug to import the styles:
+     ```
+     include _style.pug
+     ```
+   - Format the Pug file using VS Code's Pug beautifier (Shortcut: **Cmd + Shift + P** / **Ctrl + Shift + P** → "Beautify Pug").
+
+---
+
+## 2. Understanding Email Formatting
+
+Many email clients only support **table-based layouts**, making email templates complex with nested tables. However, we focus on the **content area**, which contains the actual message.
+
+To make templates reusable:
+
+- Move **reusable elements** (headers, footers, styles) into a `baseEmail.pug` file.
+- Define a **block named `content`** in `baseEmail.pug` where specific email content can be inserted.
+- Modify `welcome.pug` to **extend** `baseEmail.pug` and insert content inside the block.
+
+### Example:
+
+**baseEmail.pug**
+
+```
+doctype html
+html
+  head
+    title= subject
+  body
+    block content
 ```
 
-### Explanation:
+**welcome.pug**
 
-- `user.email` is assigned to `this.to` to specify the recipient.
-- `user.name.split(' ')[0]` extracts the first name for personalization.
-- `this.url` stores the relevant URL (e.g., a password reset link).
-- `this.from` is assigned from an **environment variable (EMAIL_FROM)** to keep the sender's email configurable.
+```
+extends baseEmail
 
-### 2. Configuring Transporters
-
-To send emails, we need to define a transporter. The transporter varies based on the environment:
-
-- **Development**: Uses Mailtrap to catch emails.
-- **Production**: Uses SendGrid for real email delivery.
-
-### Creating the `createTransport` Method
-
-```jsx
-createTransport() {
-    if (process.env.NODE_ENV === 'production') {
-        return 1; // Placeholder for SendGrid configuration (to be implemented later)
-    }
-    return nodemailer.createTransport({
-        host: process.env.MAILTRAP_HOST,
-        port: process.env.MAILTRAP_PORT,
-        auth: {
-            user: process.env.MAILTRAP_USER,
-            pass: process.env.MAILTRAP_PASS
-        }
-    });
-}
+block content
+  h1 Welcome, #{firstName}!
+  p Thank you for joining us.
+  a(href=url) Upload User Photo
 ```
 
-### Explanation:
+---
 
-- Checks if the app is in **production mode**.
-- Uses **Mailtrap** in development mode for testing emails safely.
+## 3. Sending Emails in Node.js
 
-### 3. Creating the `send` Method
+To send an email, we integrate our Pug template with **Nodemailer** in the `authController.js` file.
 
-This method will handle the **actual email sending process**.
+### Steps:
 
-### Defining the `send` Method
+1. **Import the email module:**
 
-```jsx
-async send(template, subject) {
-    // 1. Render the HTML for the email
-    const html = pug.renderFile(`${__dirname}/../views/emails/${template}.pug`, {
-        firstName: this.firstName,
-        url: this.url,
-        subject
-    });
+   ```
+   const Email = require('../utils/email');
+   ```
 
-    // 2. Define email options
-    const mailOptions = {
-        from: this.from,
-        to: this.to,
-        subject,
-        html,
-        text: htmlToText.fromString(html) // Convert HTML to plain text
-    };
+2. **Modify the `signup` function** in `authController.js` to send a welcome email:
 
-    // 3. Create a transporter and send the email
-    await this.createTransport().sendMail(mailOptions);
-}
-```
+   ```jsx
+   exports.signup = async (req, res, next) => {
+     const newUser = await User.create(req.body);
+     const url = `${req.protocol}://${req.get('host')}/me`;
+     await new Email(newUser, url).sendWelcome();
+     res.status(201).json({ status: 'success', data: { user: newUser } });
+   };
+   ```
 
-### Explanation:
+   - The `url` dynamically generates the correct host (localhost for development, domain for production).
+   - The `Email` class sends the email.
 
-- **Step 1:** Converts the Pug template into an HTML email.
-- **Step 2:** Defines email properties like `to`, `from`, `subject`, and `text`.
-- **Step 3:** Sends the email using the transporter.
+---
 
-### 4. Implementing Specific Email Methods
+## 4. Testing the Email System
 
-To simplify email handling, we define specific methods like `sendWelcome` and `sendPasswordReset` that call `send` with the required template and subject.
+1. **Use Postman to create a test user**
+   - Send a POST request to `/signup` with sample user data.
+   - Check the response for success.
+2. **Verify the email in Mailtrap**
+   - Log in to Mailtrap.
+   - Open the inbox and check for the received email.
 
-### `sendWelcome` Method
+---
 
-```jsx
-async sendWelcome() {
-    await this.send('welcome', 'Welcome to the Natours Family!');
-}
-```
+## Conclusion
 
-### Explanation:
+By following these steps, we have:
+✔ Created a **Pug-based email template**.
+✔ Structured the template to be **reusable and modular**.
+✔ Integrated email sending into **Node.js with Nodemailer**.
+✔ Ensured that **emails work in development and production** environments.
 
-- Calls `send` with the `welcome` template.
-- Passes a predefined subject line.
+This method allows us to create and manage multiple email templates efficiently, ensuring a scalable and maintainable email system in our Node.js application.
