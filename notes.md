@@ -1,100 +1,121 @@
-# 008 Processing Multiple Images
+## Node.js - Sending Emails with Pug and SendGrid
 
 ---
 
-## Uploading and Processing Tour Images in Node.js
+## Introduction
 
----
+In this section, we will enhance our email handling capabilities in Node.js by creating email templates using **Pug** and sending real emails with **SendGrid**. We previously implemented a basic email handler for password resets, but now we will build a **robust, scalable email service** that can handle multiple email templates and use different transporters for development and production environments.
 
-## Processing Tour Images
+## Steps to Implement the Email Service
 
-Now, let’s implement a similar process for uploading and processing tour images.
+### 1. Creating the Email Class
 
-### Step 1: Checking for Uploaded Images
+We will create an `Email` class inside the `utils` folder. This class will:
 
-Before proceeding with image processing, we must check if images were uploaded.
+- Handle email sending.
+- Support multiple email templates.
+- Work with both development and production environments.
 
-```jsx
-const resizeTourImages = catchAsync(async (req, res, next) => {
-  if (!req.files || !req.files.imageCover || !req.files.images) return next();
-```
+### Defining the `Email` Class
 
-- The function first checks if `req.files` exists.
-- It also ensures that both `imageCover` and `images` fields exist before proceeding.
-- If no images were uploaded, it moves to the next middleware immediately.
-
-### Step 2: Processing the Cover Image
-
-We extract the `imageCover` from `req.files`, resize it, format it as a JPEG, and save it with a unique filename.
+We start by defining the class and exporting it:
 
 ```jsx
-const imageCoverFilename = `tour-${req.params.id}-${Date.now()}-cover.jpeg`;
-
-await sharp(req.files.imageCover[0].buffer)
-  .resize(2000, 1333)
-  .toFormat('jpeg')
-  .jpeg({ quality: 90 })
-  .toFile(`public/img/tours/${imageCoverFilename}`);
-
-req.body.imageCover = imageCoverFilename;
+module.exports = class Email {
+  constructor(user, url) {
+    this.to = user.email;
+    this.firstName = user.name.split(' ')[0]; // Extract first name
+    this.url = url;
+    this.from = `Natours <${process.env.EMAIL_FROM}>`;
+  }
+};
 ```
 
-- The filename follows the pattern: `tour-{tourId}-{timestamp}-cover.jpeg`.
-- `sharp` resizes the image to a 3:2 aspect ratio (2000x1333 pixels).
-- The processed image is saved in the `public/img/tours/` directory.
-- The filename is stored in `req.body.imageCover` so it can be updated in the database.
+### Explanation:
 
-### Step 3: Processing Multiple Images
+- `user.email` is assigned to `this.to` to specify the recipient.
+- `user.name.split(' ')[0]` extracts the first name for personalization.
+- `this.url` stores the relevant URL (e.g., a password reset link).
+- `this.from` is assigned from an **environment variable (EMAIL_FROM)** to keep the sender's email configurable.
 
-The `images` array contains multiple uploaded files. We loop through them and apply the same processing logic.
+### 2. Configuring Transporters
+
+To send emails, we need to define a transporter. The transporter varies based on the environment:
+
+- **Development**: Uses Mailtrap to catch emails.
+- **Production**: Uses SendGrid for real email delivery.
+
+### Creating the `createTransport` Method
 
 ```jsx
-req.body.images = [];
-
-await Promise.all(
-  req.files.images.map(async (file, i) => {
-    const filename = `tour-${req.params.id}-${Date.now()}-${i + 1}.jpeg`;
-
-    await sharp(file.buffer)
-      .resize(2000, 1333)
-      .toFormat('jpeg')
-      .jpeg({ quality: 90 })
-      .toFile(`public/img/tours/${filename}`);
-
-    req.body.images.push(filename);
-  }),
-);
+createTransport() {
+    if (process.env.NODE_ENV === 'production') {
+        return 1; // Placeholder for SendGrid configuration (to be implemented later)
+    }
+    return nodemailer.createTransport({
+        host: process.env.MAILTRAP_HOST,
+        port: process.env.MAILTRAP_PORT,
+        auth: {
+            user: process.env.MAILTRAP_USER,
+            pass: process.env.MAILTRAP_PASS
+        }
+    });
+}
 ```
 
-- We initialize `req.body.images` as an empty array.
-- `map()` is used to iterate over each file and apply processing.
-- Each image gets a unique filename (`tour-{tourId}-{timestamp}-{index}.jpeg`).
-- `Promise.all()` ensures all images are processed before moving to the next middleware.
+### Explanation:
 
-### Step 4: Moving to the Next Middleware
+- Checks if the app is in **production mode**.
+- Uses **Mailtrap** in development mode for testing emails safely.
 
-Finally, we call `next()` to pass the processed data to the next middleware.
+### 3. Creating the `send` Method
+
+This method will handle the **actual email sending process**.
+
+### Defining the `send` Method
 
 ```jsx
-  next();
-});
+async send(template, subject) {
+    // 1. Render the HTML for the email
+    const html = pug.renderFile(`${__dirname}/../views/emails/${template}.pug`, {
+        firstName: this.firstName,
+        url: this.url,
+        subject
+    });
+
+    // 2. Define email options
+    const mailOptions = {
+        from: this.from,
+        to: this.to,
+        subject,
+        html,
+        text: htmlToText.fromString(html) // Convert HTML to plain text
+    };
+
+    // 3. Create a transporter and send the email
+    await this.createTransport().sendMail(mailOptions);
+}
 ```
 
----
+### Explanation:
 
-## Testing the Implementation
+- **Step 1:** Converts the Pug template into an HTML email.
+- **Step 2:** Defines email properties like `to`, `from`, `subject`, and `text`.
+- **Step 3:** Sends the email using the transporter.
 
-To verify our implementation:
+### 4. Implementing Specific Email Methods
 
-1. Upload a tour image via an API request.
-2. Check if the `imageCover` is stored correctly.
-3. Verify that multiple images are processed and saved with correct filenames.
-4. Ensure the tour document in the database gets updated with the image filenames.
+To simplify email handling, we define specific methods like `sendWelcome` and `sendPasswordReset` that call `send` with the required template and subject.
 
-By structuring the image upload handling properly, we ensure that:
+### `sendWelcome` Method
 
-- No images are lost.
-- Processing is efficient.
-- The database correctly reflects the uploaded files.
+```jsx
+async sendWelcome() {
+    await this.send('welcome', 'Welcome to the Natours Family!');
+}
+```
 
-This implementation is now robust and ready for integration into the tour management system.
+### Explanation:
+
+- Calls `send` with the `welcome` template.
+- Passes a predefined subject line.
