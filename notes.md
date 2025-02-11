@@ -1,130 +1,158 @@
-# 010 Email Templates with Pug\_ Welcome Emails
+# 011 Sending Password Reset Emails
 
 ---
 
-## Sending Emails with Pug in Node.js
+# Sending Password Reset Emails in Node.js
 
 ## Overview
 
-In this guide, we will learn how to use **Pug** to create a dynamic email template and send a welcome email based on that template. The email template will include a personalized message and a styled button. We will also discuss inlining CSS, structuring reusable email templates, and dynamically inserting user data.
+In this section, we will learn how to send password reset emails in a Node.js application using Pug templates and an email handler class. We will cover:
+
+- Creating a Pug template for password reset emails
+- Implementing the email sending function
+- Integrating the function into our authentication controller
+- Testing the password reset functionality using Postman
 
 ---
 
-## 1. Creating the Email Template
+## 1. Creating the Password Reset Email Template
 
-We will use **Pug** to create an HTML email template. The template file is named `welcome.pug` and is stored in the `dev-data/templates/` directory.
+To format the password reset email, we use a **Pug template**. This template includes:
 
-### Steps:
+- A greeting with the user's first name
+- Instructions to reset the password with a clickable link
+- A fallback message in case the user did not request a reset
+- A simple button for better user experience
 
-1. **Copy an existing email template**
-
-   - The email design is adapted from an HTML template.
-   - The HTML template is converted into **Pug** using an online tool: [HTML to Pug Converter](https://html2pug.com/).
-
-     ```
-     //- Email template adapted from https://github.com/leemunroe/responsive-html-email-template
-     //- Converted from HTML using https://html2pug.now.sh/
-
-     ```
-
-   - This allows quick conversion of pre-existing HTML pages into **Pug** format.
-
-2. **Inline CSS**
-   - Email clients require **inline styles** for proper rendering.
-   - The template includes a large amount of CSS directly in the file.
-   - To keep the template clean, we will extract the styles into a separate file.
-3. **Extracting Styles to a Separate File**
-   - Create a new file `_style.pug`.
-   - Move all inline CSS from `welcome.pug` to `_style.pug`.
-   - Use the `include` keyword in Pug to import the styles:
-     ```
-     include _style.pug
-     ```
-   - Format the Pug file using VS Code's Pug beautifier (Shortcut: **Cmd + Shift + P** / **Ctrl + Shift + P** → "Beautify Pug").
-
----
-
-## 2. Understanding Email Formatting
-
-Many email clients only support **table-based layouts**, making email templates complex with nested tables. However, we focus on the **content area**, which contains the actual message.
-
-To make templates reusable:
-
-- Move **reusable elements** (headers, footers, styles) into a `baseEmail.pug` file.
-- Define a **block named `content`** in `baseEmail.pug` where specific email content can be inserted.
-- Modify `welcome.pug` to **extend** `baseEmail.pug` and insert content inside the block.
-
-### Example:
-
-**baseEmail.pug**
-
-```
-doctype html
-html
-  head
-    title= subject
-  body
-    block content
-```
-
-**welcome.pug**
+### **passwordReset.pug**:
 
 ```
 extends baseEmail
 
 block content
-  h1 Welcome, #{firstName}!
-  p Thank you for joining us.
-  a(href=url) Upload User Photo
+    p Hi #{firstName},
+    p Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: #{url}
+
+    p (Website for this action not yet implemented)
+    table.btn.btn-primary(role='presentation' border='0' cellpadding='0' cellspacing='0')
+        tbody
+            tr
+                td(align='left')
+                    table(role='presentation' border='0' cellpadding='0' cellspacing='0')
+                        tbody
+                            tr
+                                td
+                                    a(href=`${url}`, target='_blank') Reset your password
+    p If you didn’t forget your password, please ignore this email.
 ```
 
----
+### **Key Features:**
 
-## 3. Sending Emails in Node.js
-
-To send an email, we integrate our Pug template with **Nodemailer** in the `authController.js` file.
-
-### Steps:
-
-1. **Import the email module:**
-
-   ```
-   const Email = require('../utils/email');
-   ```
-
-2. **Modify the `signup` function** in `authController.js` to send a welcome email:
-
-   ```jsx
-   exports.signup = async (req, res, next) => {
-     const newUser = await User.create(req.body);
-     const url = `${req.protocol}://${req.get('host')}/me`;
-     await new Email(newUser, url).sendWelcome();
-     res.status(201).json({ status: 'success', data: { user: newUser } });
-   };
-   ```
-
-   - The `url` dynamically generates the correct host (localhost for development, domain for production).
-   - The `Email` class sends the email.
+- Uses **Pug** template syntax for dynamic content.
+- Interpolates `#{firstName}` and `#{url}` dynamically.
+- Provides a **button** for better UI experience.
+- Includes a fallback message to prevent unauthorized resets.
 
 ---
 
-## 4. Testing the Email System
+## 2. Implementing the Email Sending Function
 
-1. **Use Postman to create a test user**
-   - Send a POST request to `/signup` with sample user data.
-   - Check the response for success.
-2. **Verify the email in Mailtrap**
-   - Log in to Mailtrap.
-   - Open the inbox and check for the received email.
+We now define a method to send password reset emails in our **Email class**.
+
+### **email.js**:
+
+```jsx
+async sendPasswordReset() {
+    await this.send(
+        'passwordReset',
+        'Your password reset token (valid for only 10 minutes)'
+    ); // Template name and subject line
+}
+```
+
+### **Explanation:**
+
+- This function calls `this.send()`, which is a general function for sending emails.
+- It passes **'passwordReset'** as the template name and a subject line.
+- This keeps our code clean and modular.
 
 ---
 
-## Conclusion
+## 3. Integrating Email Functionality in Authentication Controller
 
-By following these steps, we have:
-✔ Created a **Pug-based email template**.
-✔ Structured the template to be **reusable and modular**.
-✔ Integrated email sending into **Node.js with Nodemailer**.
-✔ Ensured that **emails work in development and production** environments.
+Now, we integrate the email sending function into our authentication logic.
 
-This method allows us to create and manage multiple email templates efficiently, ensuring a scalable and maintainable email system in our Node.js application.
+### **authController.js**:
+
+```jsx
+const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`;
+await new Email(user, resetURL).sendPasswordReset();
+```
+
+### **Steps:**
+
+1. **Generate the reset URL** dynamically based on the request protocol and host.
+2. **Create a new Email instance**, passing the user and reset URL.
+3. **Call `sendPasswordReset()`** to send the email.
+
+### **Benefits:**
+
+- Keeps email logic **separate** from authentication logic.
+- Enhances **code reusability**.
+- Improves **maintainability** by abstracting email details.
+
+---
+
+## 4. Testing Password Reset Functionality
+
+To verify that our password reset email works correctly, we use **Postman**.
+
+### **Steps to Test:**
+
+1. **Send a `POST` request** to the Forgot Password endpoint:
+
+   - Route: `/api/v1/users/forgotPassword`
+   - Payload:
+
+   ```
+   {
+     "email": "test3@natours.io"
+   }
+   ```
+
+2. **Check the response**:
+   - The response should return `{ success: true }` and a reset token.
+3. **Verify the email** in Mailtrap (for development mode):
+   - The email should appear in the Mailtrap inbox.
+   - The email should contain a reset link.
+4. **Use the reset token to update the password**:
+
+   - Send a `PATCH` request to `/api/v1/users/resetPassword/:token`
+   - Example payload:
+
+   ```
+   {
+     "password": "newpassword",
+     "passwordConfirm": "newpassword"
+   }
+   ```
+
+5. **Attempt logging in with the new password**:
+   - Use `/api/v1/users/login`
+   - Verify that authentication succeeds.
+
+---
+
+## 5. Using Mailtrap for Development Testing
+
+To prevent sending real emails during development, we use **Mailtrap**.
+
+### **Why Mailtrap?**
+
+- **Prevents accidental emails** from reaching real users.
+- **Allows testing and debugging** email templates in a sandboxed environment.
+- **Captures all outgoing emails**, making them visible in the Mailtrap dashboard.
+
+### **Next Steps**
+
+In the next phase, we will configure our application to send **real emails** to actual email addresses using a transactional email service like **SendGrid or Mailgun**.

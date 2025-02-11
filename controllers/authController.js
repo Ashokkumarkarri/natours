@@ -194,18 +194,10 @@ exports.forgotPassword = catchAsync(async (req, res, next) => {
   const resetToken = user.createPasswordResetToken();
   await user.save({ validateBeforeSave: false });
 
-  //3)Send it to user's email
-  const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`;
-  //in future when he click on the link he can enter the details, but for now, user has to copy the url and enter his details.
-  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${resetURL}.\nif you don't forgot your password, please Ignore this email.`;
-
   try {
-    // //sendEmail function is an async function, which means it will return a promise and we need to handel that promise
-    // await sendEmail({
-    //   email: user.email,
-    //   subject: 'Your password reset token for (valid only for 10 mins)',
-    //   message,
-    // });
+    //3)Send it to user's email
+    const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`;
+    await new Email(user, resetURL).sendPasswordReset();
     res.status(200).json({
       status: 'success',
       message: 'Token sent to email!',
