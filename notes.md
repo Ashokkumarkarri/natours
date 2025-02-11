@@ -1,140 +1,100 @@
-# 007 Uploading Multiple Images\_ Tours
+# 008 Processing Multiple Images
 
 ---
 
-## Uploading and Processing Multiple Images in Node.js
-
-## Overview
-
-In this lecture, we focus on uploading and processing multiple images at the same time using `multer` and `sharp`. We will implement this feature for tour pictures, allowing an image cover and multiple additional images to be uploaded and processed efficiently.
-
-## Tour Model Image Fields
-
-Our `tour` model contains two image-related fields:
-
-- **imageCover**: A single image representing the main cover photo.
-- **images**: An array containing multiple images (at least three) for the tour details page.
-
-Since our requirements involve uploading multiple files with different constraints, we will configure `multer` to handle this appropriately.
+## Uploading and Processing Tour Images in Node.js
 
 ---
 
-## Setting Up Multer for Image Uploads
+## Processing Tour Images
 
-### Import Required Modules
+Now, let’s implement a similar process for uploading and processing tour images.
+
+### Step 1: Checking for Uploaded Images
+
+Before proceeding with image processing, we must check if images were uploaded.
 
 ```jsx
-const multer = require('multer');
-const sharp = require('sharp');
+const resizeTourImages = catchAsync(async (req, res, next) => {
+  if (!req.files || !req.files.imageCover || !req.files.images) return next();
 ```
 
-### Configuring Storage
+- The function first checks if `req.files` exists.
+- It also ensures that both `imageCover` and `images` fields exist before proceeding.
+- If no images were uploaded, it moves to the next middleware immediately.
 
-We store uploaded images in memory as buffers instead of saving them directly to the disk:
+### Step 2: Processing the Cover Image
+
+We extract the `imageCover` from `req.files`, resize it, format it as a JPEG, and save it with a unique filename.
 
 ```jsx
-const multerStorage = multer.memoryStorage();
+const imageCoverFilename = `tour-${req.params.id}-${Date.now()}-cover.jpeg`;
+
+await sharp(req.files.imageCover[0].buffer)
+  .resize(2000, 1333)
+  .toFormat('jpeg')
+  .jpeg({ quality: 90 })
+  .toFile(`public/img/tours/${imageCoverFilename}`);
+
+req.body.imageCover = imageCoverFilename;
 ```
 
-### File Type Filtering
+- The filename follows the pattern: `tour-{tourId}-{timestamp}-cover.jpeg`.
+- `sharp` resizes the image to a 3:2 aspect ratio (2000x1333 pixels).
+- The processed image is saved in the `public/img/tours/` directory.
+- The filename is stored in `req.body.imageCover` so it can be updated in the database.
 
-We define a filter to accept only images:
+### Step 3: Processing Multiple Images
 
-```jsx
-const multerFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image')) {
-    cb(null, true);
-  } else {
-    cb(new AppError('Not an image! Please upload only images.', 400), false);
-  }
-};
-```
-
-### Multer Upload Configuration
+The `images` array contains multiple uploaded files. We loop through them and apply the same processing logic.
 
 ```jsx
-const upload = multer({
-  storage: multerStorage,
-  fileFilter: multerFilter,
-});
-```
+req.body.images = [];
 
-We use different multer methods depending on our requirements:
+await Promise.all(
+  req.files.images.map(async (file, i) => {
+    const filename = `tour-${req.params.id}-${Date.now()}-${i + 1}.jpeg`;
 
-- `upload.single('image')` → For a single image upload.
-- `upload.array('images', 5)` → For multiple images with the same field name.
-- `upload.fields([{ name: 'imageCover', maxCount: 1 }, { name: 'images', maxCount: 3 }])` → For handling multiple fields.
+    await sharp(file.buffer)
+      .resize(2000, 1333)
+      .toFormat('jpeg')
+      .jpeg({ quality: 90 })
+      .toFile(`public/img/tours/${filename}`);
 
-Since we need one `imageCover` and up to three `images`, we configure:
-
-```jsx
-exports.uploadTourImages = upload.fields([
-  { name: 'imageCover', maxCount: 1 },
-  { name: 'images', maxCount: 3 },
-]);
-```
-
----
-
-## Middleware for Image Processing (next viedo)
-
-Once images are uploaded, we need to resize and format them consistently. (we do it in next video)
-
-### Resizing and Saving Images with `sharp` (next viedo)
-
-To maintain consistent image formatting, we process images using `sharp`:
-
-This ensures:
-
-1. The `imageCover` is resized to 2000x1333 pixels and saved in JPEG format.
-2. Each additional image undergoes the same processing.
-3. The processed filenames are stored in `req.body` for database updates.
-
----
-
-## Integrating Upload and Processing Middleware
-
-We apply these middlewares to our tour update route:
-
-```jsx
-router.patch(
-  '/:id',
-  authController.protect,
-  authController.restrictTo('admin', 'lead-guide'),
-  tourController.uploadTourImages,
-  tourController.resizeTourImages,
-  tourController.updateTour,
+    req.body.images.push(filename);
+  }),
 );
 ```
 
-This ensures:
+- We initialize `req.body.images` as an empty array.
+- `map()` is used to iterate over each file and apply processing.
+- Each image gets a unique filename (`tour-{tourId}-{timestamp}-{index}.jpeg`).
+- `Promise.all()` ensures all images are processed before moving to the next middleware.
 
-1. Only authorized users can upload images.
-2. `multer` handles file uploads.
-3. `resizeTourImages` processes the images before updating the database. (next viedo)
+### Step 4: Moving to the Next Middleware
 
----
+Finally, we call `next()` to pass the processed data to the next middleware.
 
-## Testing in Postman
-
-### Steps:
-
-1. **Create a New Tour** in MongoDB Compass by duplicating an existing tour and removing `imageCover` and `images` fields.
-2. **Update Tour in Postman**
-   - Change request type to `PATCH`.
-   - Use `multipart/form-data` in the request body.
-   - Upload:
-     - One file for `imageCover`.
-     - Three files for `images`.
-   - Modify any other fields, like `price`.
-   - Ensure you are logged in as an admin before sending the request.
-3. **Inspect Console Output**
-   - Verify uploaded files are logged correctly.
-   - Ensure `req.files` contains the expected structure.
-   - Check the `public/img/tours` directory for resized images.
+```jsx
+  next();
+});
+```
 
 ---
 
-## Next Steps
+## Testing the Implementation
 
-In the following lecture, we will integrate these processed image paths into our database and serve them efficiently through our API.
+To verify our implementation:
+
+1. Upload a tour image via an API request.
+2. Check if the `imageCover` is stored correctly.
+3. Verify that multiple images are processed and saved with correct filenames.
+4. Ensure the tour document in the database gets updated with the image filenames.
+
+By structuring the image upload handling properly, we ensure that:
+
+- No images are lost.
+- Processing is efficient.
+- The database correctly reflects the uploaded files.
+
+This implementation is now robust and ready for integration into the tour management system.
