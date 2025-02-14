@@ -10,12 +10,20 @@ module.exports = class Email {
     this.to = user.email;
     this.firstName = user.name.split(' ')[0];
     this.url = url;
-    this.from = `Ashok kumar <${process.env.EMAIL_FROM}>`;
+    this.from = `Ashok Kumar <${process.env.EMAIL_FROM}>`;
   }
   newTransport() {
     if (process.env.NODE_ENV === 'production') {
       //SendGrid
-      return 1;
+      return nodemailer.createTransport({
+        host: 'smtp.resend.com', // Resend SMTP host
+        port: 587,
+        secure: false, // Set to true for port 465
+        auth: {
+          user: 'resend', // ✅ Resend uses a fixed username "resend"
+          pass: process.env.RESEND_API_KEY, // Your Resend API Key
+        },
+      });
     }
     return nodemailer.createTransport({
       host: process.env.EMAIL_HOST,
