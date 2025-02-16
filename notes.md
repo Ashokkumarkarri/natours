@@ -1,120 +1,143 @@
-# 018 Rendering a User's Booked Tours
+# 019 Finishing the Bookings API
 
 ---
 
-# Implementing the 'My Bookings' Page in Node.js
+# Node.js Bookings API - Detailed Notes
 
 ## Overview
 
-In this section, we will implement a **My Bookings** page that displays all the tours a user has booked. The page will be accessible only to logged-in users. To achieve this, we will:
+In this section, we will complete the Bookings API by implementing all CRUD operations:
 
-1. Create a new route for **My Tours**.
-2. Protect the route so only authenticated users can access it.
-3. Implement a controller to fetch and display booked tours.
-4. Use MongoDB queries to retrieve booking data and associated tour details.
-5. Render the **overview page**, filtering it to show only booked tours.
+- **Create** a booking
+- **Read** (Get) all bookings or a specific booking
+- **Update** an existing booking
+- **Delete** a booking
+
+We will also ensure that these routes are protected and accessible only to authorized users, such as administrators and lead guides.
 
 ---
 
-## Step 1: Creating a New Route for 'My Tours'
+## Step 1: Implementing the CRUD Operations
 
-In `viewRoutes.js`, we define a new route:
+### 1.1 Creating Booking Handlers
+
+We will utilize the factory functions we have already created to implement the CRUD operations for bookings in `bookingController.js`.
 
 ```jsx
-router.get('/my-tours', authController.protect, viewController.getMyTours);
+exports.createBooking = factory.createOne(Booking);
+exports.getBooking = factory.getOne(Booking);
+exports.getAllBookings = factory.getAll(Booking);
+exports.updateBooking = factory.updateOne(Booking);
+exports.deleteBooking = factory.deleteOne(Booking);
 ```
 
-### Explanation:
+Each function follows a standard pattern:
 
-- The route is set to `/my-tours`.
-- The `authController.protect` middleware ensures that only authenticated users can access this page.
-- The `viewController.getMyTours` controller will handle the request and render the appropriate view.
+- `createBooking`: Uses `createOne` to create a new booking.
+- `getBooking`: Uses `getOne` to retrieve a specific booking.
+- `getAllBookings`: Uses `getAll` to fetch all bookings.
+- `updateBooking`: Uses `updateOne` to modify an existing booking.
+- `deleteBooking`: Uses `deleteOne` to remove a booking.
 
 ---
 
-## Step 2: Implementing the Controller to Fetch Booked Tours
+## Step 2: Setting Up Routes
 
-Now, we create the controller function `getMyTours` in `viewsController.js`.
+We define our API routes in `bookingRoutes.js` and apply necessary authentication and authorization middleware.
+
+### 2.1 Authentication and Authorization Middleware
 
 ```jsx
-const Booking = require('../models/bookingModel');
-
-exports.getMyTours = catchAsync(async (req, res, next) => {
-  // 1) Find all bookings for the logged-in user
-  const bookings = await Booking.find({ user: req.user.id });
-
-  // 2) Extract tour IDs from bookings
-  const tourIds = bookings.map((el) => el.tour);
-
-  // 3) Retrieve tours based on extracted IDs
-  const tours = await Tour.find({ _id: { $in: tourIds } });
-
-  // 4) Render the overview page with booked tours
-  res.status(200).render('overview', {
-    title: 'My Tours',
-    tours,
-  });
-});
+router.use(authController.protect);
 ```
 
-### Explanation:
+This ensures that all subsequent routes require authentication.
 
-1. **Find all bookings for the logged-in user**
-   - We query the `Booking` model using `Booking.find({ user: req.user.id })`.
-   - This retrieves all bookings associated with the currently logged-in user.
-2. **Extract tour IDs**
-   - We use `.map()` to create an array of tour IDs from the retrieved bookings.
-3. **Find corresponding tours**
-   - We use the `$in` MongoDB operator to query the `Tour` model.
-   - This retrieves all tours whose `_id` matches any ID in the `tourIds` array.
-4. **Render the view**
-   - The `overview` template is reused to display only the booked tours.
-   - The `title` is set to `'My Tours'`.
+Next, we apply role-based access control:
 
----
-
-## Step 3: Adding the Link to 'My Tours' in the Account Page
-
-In `account.pug`, add a link to **My Tours** in the sidebar:
-
-```
-+navItem('/my-tours', 'My booking', 'briefcase')
+```jsx
+router.use(authController.restrictTo('admin', 'lead-guide'));
 ```
 
-### Explanation:
+This restricts access to only **admins** and **lead guides**.
 
-- This adds a navigation item labeled **My Booking**.
-- The icon used is `'briefcase'`.
-- Clicking the link redirects users to `/my-tours`.
+### 2.2 Defining Routes
+
+```jsx
+router.get('/checkout-session/:tourId', bookingController.getCheckoutSession);
+```
+
+This endpoint handles checkout sessions for booking a tour.
+
+### 2.2.1 Routes Without ID (Collection-Level Routes)
+
+```jsx
+router
+  .route('/')
+  .get(bookingController.getAllBookings)
+  .post(bookingController.createBooking);
+```
+
+- `GET /api/v1/bookings/` → Fetch all bookings (restricted to admins and lead guides)
+- `POST /api/v1/bookings/` → Create a new booking (restricted access)
+
+### 2.2.2 Routes With ID (Individual Resource Routes)
+
+```jsx
+router
+  .route('/:id')
+  .get(bookingController.getBooking)
+  .patch(bookingController.updateBooking)
+  .delete(bookingController.deleteBooking);
+```
+
+- `GET /api/v1/bookings/:id` → Fetch a single booking by ID
+- `PATCH /api/v1/bookings/:id` → Update a booking
+- `DELETE /api/v1/bookings/:id` → Delete a booking
 
 ---
 
-## Step 4: Testing the Implementation
+## Step 3: Testing in Postman
 
-To test the **My Tours** feature:
+To verify our API functionality, we test endpoints in **Postman**.
 
-1. **Log in as a user who has made bookings.**
-2. **Visit `/my-tours` and verify booked tours are displayed.**
-3. **If the page is empty, make a booking and recheck.**
+### 3.1 Logging in as an Admin
 
-### Example Booking Test:
+Before testing, we must authenticate:
 
-1. Navigate to a tour booking page.
-2. Complete the payment process.
-3. Revisit `/my-tours` and confirm that the booked tour appears.
+1. Send a `POST` request to `/api/v1/users/login`.
+2. Use credentials (e.g., `admin@natours.io`).
+3. Copy the **JWT token** from the response.
+
+### 3.2 Testing Endpoints
+
+### Fetch All Bookings
+
+- `GET /api/v1/bookings/`
+- Add **Authorization** header with `Bearer <token>`.
+
+### Fetch a Single Booking
+
+- `GET /api/v1/bookings/:id`
+- Ensure correct booking `id` is used.
+
+We verify that:
+
+- The booking details include populated **tour** and **user** data.
+- The response includes **price** and other relevant details.
+
+### Saving Requests
+
+- Organize test requests into a `Bookings` folder in Postman.
+- Save commonly used requests for quick access.
 
 ---
 
-## Conclusion
+## Final Considerations
 
-With this implementation, users can now view a personalized **My Bookings** page listing their booked tours. The feature uses **MongoDB queries** to retrieve relevant data and renders a filtered view of the existing **overview page**.
+- The Bookings API is now fully functional with CRUD operations.
+- Authentication and authorization ensure security.
+- The `getAllBookings` and `getBooking` endpoints work as expected.
+- Further improvements can be made by adding **more detailed error handling** and **validation checks**.
 
-✅ **Key Takeaways:**
-
-- Protect routes to ensure only logged-in users can access them.
-- Use **MongoDB `$in` operator** to find multiple documents by ID.
-- Reuse existing templates where possible to optimize development.
-
----
-
-This concludes the implementation of the **My Bookings** page in Node.js! 🎉
+This concludes our implementation of the Bookings API! 🚀
