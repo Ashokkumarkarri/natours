@@ -1,137 +1,120 @@
-# 017 Creating New Bookings on Checkout Success
+# 018 Rendering a User's Booked Tours
 
 ---
 
-# Handling Booking Creation After a Successful Checkout in Node.js
+# Implementing the 'My Bookings' Page in Node.js
 
 ## Overview
 
-In this lecture, we will implement a temporary solution to create a new booking in our database whenever a user successfully purchases a tour. The core idea revolves around redirecting the user to a success URL after checkout and using query parameters to store booking details temporarily.
+In this section, we will implement a **My Bookings** page that displays all the tours a user has booked. The page will be accessible only to logged-in users. To achieve this, we will:
 
-> Note: This method is not secure and is only a temporary workaround. A more secure solution using Stripe Webhooks will be implemented when the website is deployed.
-
----
-
-## Step 1: Understanding the Success URL
-
-- In our `bookingController`, we generate a checkout session.
-- The `success_url` redirects the user to a specific URL after a successful checkout.
-- Currently, this URL is just the homepage.
-- We will modify this URL to contain necessary booking information as query parameters.
-
-### Why Query Strings?
-
-- Stripe only makes a `GET` request to the success URL.
-- We cannot send a request body, so we encode booking details (tour, user, price) in the query string.
+1. Create a new route for **My Tours**.
+2. Protect the route so only authenticated users can access it.
+3. Implement a controller to fetch and display booked tours.
+4. Use MongoDB queries to retrieve booking data and associated tour details.
+5. Render the **overview page**, filtering it to show only booked tours.
 
 ---
 
-## Step 2: Adding Booking Details to the URL
+## Step 1: Creating a New Route for 'My Tours'
+
+In `viewRoutes.js`, we define a new route:
 
 ```jsx
-success_url: `${req.protocol}://${req.get('host')}/?tour=${
-      req.params.tourId
-    }&user=${req.user.id}&price=${tour.price}`,
+router.get('/my-tours', authController.protect, viewController.getMyTours);
 ```
 
-We need three key details for booking:
+### Explanation:
 
-1. `tour` → Retrieved from `req.params.tourid`
-2. `user` → Retrieved from `req.user.id`
-3. `price` → Retrieved from `tour.price`
+- The route is set to `/my-tours`.
+- The `authController.protect` middleware ensures that only authenticated users can access this page.
+- The `viewController.getMyTours` controller will handle the request and render the appropriate view.
+
+---
+
+## Step 2: Implementing the Controller to Fetch Booked Tours
+
+Now, we create the controller function `getMyTours` in `viewsController.js`.
 
 ```jsx
-const tour = req.params.tourid;
-const user = req.user.id;
-const price = tour.price;
+const Booking = require('../models/bookingModel');
+
+exports.getMyTours = catchAsync(async (req, res, next) => {
+  // 1) Find all bookings for the logged-in user
+  const bookings = await Booking.find({ user: req.user.id });
+
+  // 2) Extract tour IDs from bookings
+  const tourIds = bookings.map((el) => el.tour);
+
+  // 3) Retrieve tours based on extracted IDs
+  const tours = await Tour.find({ _id: { $in: tourIds } });
+
+  // 4) Render the overview page with booked tours
+  res.status(200).render('overview', {
+    title: 'My Tours',
+    tours,
+  });
+});
 ```
 
-> Security Concern: This method is not secure, as anyone who knows the URL structure could manually call it and create a booking without paying. However, since the URL is not public, it is a temporary workaround.
+### Explanation:
+
+1. **Find all bookings for the logged-in user**
+   - We query the `Booking` model using `Booking.find({ user: req.user.id })`.
+   - This retrieves all bookings associated with the currently logged-in user.
+2. **Extract tour IDs**
+   - We use `.map()` to create an array of tour IDs from the retrieved bookings.
+3. **Find corresponding tours**
+   - We use the `$in` MongoDB operator to query the `Tour` model.
+   - This retrieves all tours whose `_id` matches any ID in the `tourIds` array.
+4. **Render the view**
+   - The `overview` template is reused to display only the booked tours.
+   - The `title` is set to `'My Tours'`.
 
 ---
 
-## Step 3: Creating the Booking Controller Function
+## Step 3: Adding the Link to 'My Tours' in the Account Page
 
-We define a function `createBookingCheckout` to handle the booking creation:
+In `account.pug`, add a link to **My Tours** in the sidebar:
 
-```jsx
-exports.createBookingCheckout = async (req, res, next) => {
-  const { tour, user, price } = req.query;
-
-  // Ensure all required data exists
-  if (!tour || !user || !price) return next();
-
-  await Booking.create({ tour, user, price });
-
-  // Redirect to the homepage without query parameters
-  res.redirect(req.originalUrl.split('?')[0]);
-};
+```
++navItem('/my-tours', 'My booking', 'briefcase')
 ```
 
-### Breakdown:
+### Explanation:
 
-- Extracts `tour`, `user`, and `price` from the query string.
-- If any field is missing, it proceeds to the next middleware.
-- Creates a new booking document in the database.
-- Redirects the user to the homepage without the query string for security.
-
-### **Will This Cause an Infinite Loop?**
-
-❌ **No, it won't create an infinite loop,** because:
-
-- The `redirect()` removes the query parameters from the URL.
-- On the next request, `req.query` will be empty.
-- Since `tour`, `user`, and `price` are missing, the `if (!tour && !user && !price) return next();` condition will trigger, and it won’t create another booking or redirect again.
+- This adds a navigation item labeled **My Booking**.
+- The icon used is `'briefcase'`.
+- Clicking the link redirects users to `/my-tours`.
 
 ---
 
-## Step 4: Attaching Middleware to Routes
+## Step 4: Testing the Implementation
 
-Since this functionality should run when the success URL is accessed, we add it to our middleware stack.
+To test the **My Tours** feature:
 
-In `viewRoutes.js`:
+1. **Log in as a user who has made bookings.**
+2. **Visit `/my-tours` and verify booked tours are displayed.**
+3. **If the page is empty, make a booking and recheck.**
 
-```jsx
-const bookingController = require('../controllers/bookingController');
-router.get(
-  '/',
-  bookingController.createBookingCheckout,
-  viewController.getOverview,
-);
-```
+### Example Booking Test:
 
-### How it Works:
-
-1. When the success URL is accessed, `createBookingCheckout` runs first.
-2. If booking data exists, it creates a new booking and redirects to the homepage.
-3. Since the redirected URL no longer has a query string, `createBookingCheckout` is skipped the second time.
-4. Finally, `getOverview` renders the homepage.
-
----
-
-## Step 5: Testing the Implementation
-
-To test the implementation:
-
-1. Log in as a user.
-2. Purchase a tour.
-3. Observe if a new booking is created in the database.
-4. Verify that after checkout, the URL does not contain booking details (query string is removed).
-
----
-
-## Security Concerns & Future Improvements
-
-- **Issue:** Anyone can manipulate the URL to create a booking without payment.
-- **Solution:** In production, we will use **Stripe Webhooks**, which will verify payments and create bookings securely.
+1. Navigate to a tour booking page.
+2. Complete the payment process.
+3. Revisit `/my-tours` and confirm that the booked tour appears.
 
 ---
 
 ## Conclusion
 
-- We implemented a **temporary** method to create bookings after a successful payment.
-- We stored booking details in the URL’s query string.
-- We processed the query string, created a booking, and redirected the user to a clean URL.
-- This approach is not secure, but it allows testing before implementing Stripe Webhooks.
+With this implementation, users can now view a personalized **My Bookings** page listing their booked tours. The feature uses **MongoDB queries** to retrieve relevant data and renders a filtered view of the existing **overview page**.
 
-> Next Steps: Implement Stripe Webhooks for secure booking creation!
+✅ **Key Takeaways:**
+
+- Protect routes to ensure only logged-in users can access them.
+- Use **MongoDB `$in` operator** to find multiple documents by ID.
+- Reuse existing templates where possible to optimize development.
+
+---
+
+This concludes the implementation of the **My Bookings** page in Node.js! 🎉
