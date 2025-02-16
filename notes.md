@@ -1,101 +1,137 @@
-# 016 Modelling the Bookings
+# 017 Creating New Bookings on Checkout Success
 
 ---
 
-# Node.js: Creating the Booking Model with Mongoose
+# Handling Booking Creation After a Successful Checkout in Node.js
 
-## Introduction
+## Overview
 
-In this section, we will create a **Booking Model** using Mongoose in Node.js. The Booking model will store details about a tour booking, including references to the **User** and **Tour** models, the booking price, creation date, and payment status. Additionally, we will use **query middleware** to automatically populate referenced data whenever a query is made.
+In this lecture, we will implement a temporary solution to create a new booking in our database whenever a user successfully purchases a tour. The core idea revolves around redirecting the user to a success URL after checkout and using query parameters to store booking details temporarily.
 
-## Steps to Create the Booking Model
+> Note: This method is not secure and is only a temporary workaround. A more secure solution using Stripe Webhooks will be implemented when the website is deployed.
 
-### 1. Importing Mongoose
+---
 
-First, we need to import Mongoose to define the schema and create the model.
+## Step 1: Understanding the Success URL
 
-```jsx
-const mongoose = require('mongoose');
-```
+- In our `bookingController`, we generate a checkout session.
+- The `success_url` redirects the user to a specific URL after a successful checkout.
+- Currently, this URL is just the homepage.
+- We will modify this URL to contain necessary booking information as query parameters.
 
-### 2. Defining the Booking Schema
+### Why Query Strings?
 
-The Booking Schema will include:
+- Stripe only makes a `GET` request to the success URL.
+- We cannot send a request body, so we encode booking details (tour, user, price) in the query string.
 
-- A reference to the **Tour** being booked
-- A reference to the **User** making the booking
-- The **price** at the time of booking
-- The **createdAt** timestamp
-- A **paid** status field
+---
 
-### 2.1 Using Parent Referencing
-
-We will use **parent referencing** to store only the IDs of the related User and Tour documents. This approach improves performance by keeping the booking documents lightweight.
+## Step 2: Adding Booking Details to the URL
 
 ```jsx
-const bookingSchema = new mongoose.Schema({
-  tour: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'Tour',
-    required: [true, 'Booking must belong to a Tour!'],
-  },
-  user: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'User',
-    required: [true, 'Booking must belong to a User!'],
-  },
-  price: {
-    type: Number,
-    required: [true, 'Booking must have a Price'],
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  paid: {
-    type: Boolean,
-    default: true,
-  },
-});
+success_url: `${req.protocol}://${req.get('host')}/?tour=${
+      req.params.tourId
+    }&user=${req.user.id}&price=${tour.price}`,
 ```
 
-### 3. Automatic Population of Related Fields
+We need three key details for booking:
 
-We want to automatically populate the **tour** and **user** fields whenever a query is made. This is done using **Mongoose query middleware**.
-
-### 3.1 Adding a Pre Query Middleware
-
-The following middleware executes before any **find** query, ensuring that the related user and tour data are included in the results:
+1. `tour` → Retrieved from `req.params.tourid`
+2. `user` → Retrieved from `req.user.id`
+3. `price` → Retrieved from `tour.price`
 
 ```jsx
-bookingSchema.pre(/^find/, function (next) {
-  this.populate('user').populate({
-    path: 'tour',
-    select: 'name', // Only selecting the tour name to optimize performance
-  });
-  next();
-});
+const tour = req.params.tourid;
+const user = req.user.id;
+const price = tour.price;
 ```
 
-### 4. Creating and Exporting the Model
+> Security Concern: This method is not secure, as anyone who knows the URL structure could manually call it and create a booking without paying. However, since the URL is not public, it is a temporary workaround.
 
-Finally, we create a **Booking** model from our schema and export it.
+---
+
+## Step 3: Creating the Booking Controller Function
+
+We define a function `createBookingCheckout` to handle the booking creation:
 
 ```jsx
-const Booking = mongoose.model('Booking', bookingSchema);
+exports.createBookingCheckout = async (req, res, next) => {
+  const { tour, user, price } = req.query;
 
-module.exports = Booking;
+  // Ensure all required data exists
+  if (!tour || !user || !price) return next();
+
+  await Booking.create({ tour, user, price });
+
+  // Redirect to the homepage without query parameters
+  res.redirect(req.originalUrl.split('?')[0]);
+};
 ```
 
-## Summary
+### Breakdown:
 
-- We created a **Booking Model** with fields for **user, tour, price, createdAt,** and **paid** status.
-- We used **parent referencing** for User and Tour relationships.
-- We added a **query middleware** to automatically populate referenced fields.
-- Finally, we exported the model for use in other parts of the application.
+- Extracts `tour`, `user`, and `price` from the query string.
+- If any field is missing, it proceeds to the next middleware.
+- Creates a new booking document in the database.
+- Redirects the user to the homepage without the query string for security.
 
-## Use Case
+### **Will This Cause an Infinite Loop?**
 
-This model will be used in the application to handle bookings made by users. Admins or tour guides can query this data to check bookings and manage payments.
+❌ **No, it won't create an infinite loop,** because:
 
-Now that the Booking model is ready, we can proceed to implementing booking functionality in the next section! 🚀
+- The `redirect()` removes the query parameters from the URL.
+- On the next request, `req.query` will be empty.
+- Since `tour`, `user`, and `price` are missing, the `if (!tour && !user && !price) return next();` condition will trigger, and it won’t create another booking or redirect again.
+
+---
+
+## Step 4: Attaching Middleware to Routes
+
+Since this functionality should run when the success URL is accessed, we add it to our middleware stack.
+
+In `viewRoutes.js`:
+
+```jsx
+const bookingController = require('../controllers/bookingController');
+router.get(
+  '/',
+  bookingController.createBookingCheckout,
+  viewController.getOverview,
+);
+```
+
+### How it Works:
+
+1. When the success URL is accessed, `createBookingCheckout` runs first.
+2. If booking data exists, it creates a new booking and redirects to the homepage.
+3. Since the redirected URL no longer has a query string, `createBookingCheckout` is skipped the second time.
+4. Finally, `getOverview` renders the homepage.
+
+---
+
+## Step 5: Testing the Implementation
+
+To test the implementation:
+
+1. Log in as a user.
+2. Purchase a tour.
+3. Observe if a new booking is created in the database.
+4. Verify that after checkout, the URL does not contain booking details (query string is removed).
+
+---
+
+## Security Concerns & Future Improvements
+
+- **Issue:** Anyone can manipulate the URL to create a booking without payment.
+- **Solution:** In production, we will use **Stripe Webhooks**, which will verify payments and create bookings securely.
+
+---
+
+## Conclusion
+
+- We implemented a **temporary** method to create bookings after a successful payment.
+- We stored booking details in the URL’s query string.
+- We processed the query string, created a booking, and redirected the user to a clean URL.
+- This approach is not secure, but it allows testing before implementing Stripe Webhooks.
+
+> Next Steps: Implement Stripe Webhooks for secure booking creation!
