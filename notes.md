@@ -1,131 +1,101 @@
-# 015 Processing Payments on the Front-End
+# 016 Modelling the Bookings
 
 ---
 
-## Processing Payments with Stripe in Node.js
+# Node.js: Creating the Booking Model with Mongoose
 
-## Overview
+## Introduction
 
-In this lecture, we will learn how to integrate Stripe for processing payments. The goal is to implement a "Book Tour Now" button that only appears when a user is logged in. If a user is not logged in, they will be redirected to the login page. We will also set up a Stripe checkout session and process payments on the front end.
+In this section, we will create a **Booking Model** using Mongoose in Node.js. The Booking model will store details about a tour booking, including references to the **User** and **Tour** models, the booking price, creation date, and payment status. Additionally, we will use **query middleware** to automatically populate referenced data whenever a query is made.
 
----
+## Steps to Create the Booking Model
 
-## 1. Displaying the Booking Button Conditionally
+### 1. Importing Mongoose
 
-### **Step 1: Modify the Tour Template**
+First, we need to import Mongoose to define the schema and create the model.
 
-- The "Book Tour Now" button should only be visible if a user is logged in.
-- If no user is logged in, display a button that redirects to the login page.
-- Use a template conditional to achieve this:
-  ```html
-  {% if user %}
-  <button id="book-tour" data-tour-id="{{ tour.id }}">Book Tour Now</button>
-  {% else %}
-  <a href="/login" class="btn">Login to Book Tour</a>
-  {% endif %}
-  ```
-- **Why store the tour ID in the button?**
-  - The Stripe API requires the tour ID.
-  - By adding a `data-tour-id` attribute, we can access it in JavaScript and send it in the request.
+```jsx
+const mongoose = require('mongoose');
+```
 
----
+### 2. Defining the Booking Schema
 
-## 2. Implementing the Payment Request in the Frontend
+The Booking Schema will include:
 
-### **Step 2: Create stripe.js**
+- A reference to the **Tour** being booked
+- A reference to the **User** making the booking
+- The **price** at the time of booking
+- The **createdAt** timestamp
+- A **paid** status field
 
-- We need to create a new script file `stripe.js` in the `public/js` directory.
-- Since the installed Stripe package only works for the backend, we must include Stripe’s client-side script in our HTML.
+### 2.1 Using Parent Referencing
 
-### **Include Stripe’s Client-Side Script**
+We will use **parent referencing** to store only the IDs of the related User and Tour documents. This approach improves performance by keeping the booking documents lightweight.
 
-- Add the Stripe script in the `<head>` section of the HTML:
-  ```jsx
-  <script src="https://js.stripe.com/v3/"></script>
-  ```
+```jsx
+const bookingSchema = new mongoose.Schema({
+  tour: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Tour',
+    required: [true, 'Booking must belong to a Tour!'],
+  },
+  user: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'User',
+    required: [true, 'Booking must belong to a User!'],
+  },
+  price: {
+    type: Number,
+    required: [true, 'Booking must have a Price'],
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+  paid: {
+    type: Boolean,
+    default: true,
+  },
+});
+```
 
-### **Initialize Stripe in stripe.js**
+### 3. Automatic Population of Related Fields
 
-- Retrieve the public API key from Stripe’s dashboard.
-- Initialize Stripe in `stripe.js`:
-  ```jsx
-  const stripe = Stripe('your-public-key-here');
-  ```
-- The public key is visible in the Stripe dashboard under API keys.
+We want to automatically populate the **tour** and **user** fields whenever a query is made. This is done using **Mongoose query middleware**.
 
-### **Create the `bookTour` Function**
+### 3.1 Adding a Pre Query Middleware
 
-- This function will handle booking a tour by communicating with the backend.
-- **Steps:**
+The following middleware executes before any **find** query, ensuring that the related user and tour data are included in the results:
 
-  1. Fetch the checkout session from the server.
-  2. Redirect the user to the Stripe checkout page.
+```jsx
+bookingSchema.pre(/^find/, function (next) {
+  this.populate('user').populate({
+    path: 'tour',
+    select: 'name', // Only selecting the tour name to optimize performance
+  });
+  next();
+});
+```
 
-  ```jsx
-  import axios from 'axios';
+### 4. Creating and Exporting the Model
 
-  const bookTour = async (tourId) => {
-    try {
-      // Step 1: Get checkout session from the server
-      const session = await axios.get(
-        `/api/v1/bookings/checkout-session/${tourId}`,
-      );
+Finally, we create a **Booking** model from our schema and export it.
 
-      // Step 2: Redirect to Stripe checkout page
-      await stripe.redirectToCheckout({ sessionId: session.data.session.id });
-    } catch (err) {
-      console.error(err);
-    }
-  };
-  ```
+```jsx
+const Booking = mongoose.model('Booking', bookingSchema);
 
----
+module.exports = Booking;
+```
 
-## 3. Connecting the Button to the `bookTour` Function
+## Summary
 
-### **Step 3: Modify index.js**
+- We created a **Booking Model** with fields for **user, tour, price, createdAt,** and **paid** status.
+- We used **parent referencing** for User and Tour relationships.
+- We added a **query middleware** to automatically populate referenced fields.
+- Finally, we exported the model for use in other parts of the application.
 
-- Import `bookTour` from `stripe.js`.
-- Select the booking button and attach an event listener.
+## Use Case
 
-  ```jsx
-  import { bookTour } from './stripe';
+This model will be used in the application to handle bookings made by users. Admins or tour guides can query this data to check bookings and manage payments.
 
-  const bookBtn = document.getElementById('book-tour');
-
-  if (bookBtn) {
-    bookBtn.addEventListener('click', (e) => {
-      e.target.textContent = 'Processing...';
-      const { tourId } = e.target.dataset;
-      bookTour(tourId);
-    });
-  }
-  ```
-
-### **Explanation:**
-
-- **Event Listener:** When the button is clicked, it:
-  1. Changes the button text to "Processing..."
-  2. Extracts the `tourId` from the `data-tour-id` attribute.
-  3. Calls `bookTour(tourId)` to initiate the payment process.
-
----
-
-## 4. Testing the Implementation
-
-- Ensure the development server is running (`npm start`).
-- Check that the "Book Tour" button appears only when logged in.
-- Click the button and verify that the user is redirected to Stripe’s checkout page.
-
----
-
-## 5. Summary
-
-- We conditionally displayed the "Book Tour" button based on user authentication.
-- We stored the `tourId` in the button’s `data-attribute`.
-- We created `stripe.js` to handle payment requests.
-- We used Axios to fetch the checkout session from the server.
-- We redirected users to Stripe’s checkout page.
-- We connected the button to the `bookTour` function in `index.js`.
-
-This completes the front-end setup for processing payments with Stripe in a Node.js application.
+Now that the Booking model is ready, we can proceed to implementing booking functionality in the next section! 🚀
