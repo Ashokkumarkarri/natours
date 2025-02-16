@@ -1,158 +1,130 @@
-# 011 Sending Password Reset Emails
+# 014 Integrating Stripe into the Back-End
 
 ---
 
-# Sending Password Reset Emails in Node.js
-
-## Overview
-
-In this section, we will learn how to send password reset emails in a Node.js application using Pug templates and an email handler class. We will cover:
-
-- Creating a Pug template for password reset emails
-- Implementing the email sending function
-- Integrating the function into our authentication controller
-- Testing the password reset functionality using Postman
-
----
-
-## 1. Creating the Password Reset Email Template
-
-To format the password reset email, we use a **Pug template**. This template includes:
-
-- A greeting with the user's first name
-- Instructions to reset the password with a clickable link
-- A fallback message in case the user did not request a reset
-- A simple button for better user experience
-
-### **passwordReset.pug**:
-
-```
-extends baseEmail
-
-block content
-    p Hi #{firstName},
-    p Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: #{url}
-
-    p (Website for this action not yet implemented)
-    table.btn.btn-primary(role='presentation' border='0' cellpadding='0' cellspacing='0')
-        tbody
-            tr
-                td(align='left')
-                    table(role='presentation' border='0' cellpadding='0' cellspacing='0')
-                        tbody
-                            tr
-                                td
-                                    a(href=`${url}`, target='_blank') Reset your password
-    p If you didn’t forget your password, please ignore this email.
-```
-
-### **Key Features:**
-
-- Uses **Pug** template syntax for dynamic content.
-- Interpolates `#{firstName}` and `#{url}` dynamically.
-- Provides a **button** for better UI experience.
-- Includes a fallback message to prevent unauthorized resets.
-
----
-
-## 2. Implementing the Email Sending Function
-
-We now define a method to send password reset emails in our **Email class**.
-
-### **email.js**:
+## **1. Importing Required Modules**
 
 ```jsx
-async sendPasswordReset() {
-    await this.send(
-        'passwordReset',
-        'Your password reset token (valid for only 10 minutes)'
-    ); // Template name and subject line
-}
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Tour = require('../models/tourModel');
+const catchAsync = require('./../utils/catchAsync');
+const factory = require('./handlerFactory');
+const AppError = require('../utils/appError');
 ```
 
-### **Explanation:**
-
-- This function calls `this.send()`, which is a general function for sending emails.
-- It passes **'passwordReset'** as the template name and a subject line.
-- This keeps our code clean and modular.
+- `stripe`: Imports the **Stripe** library and initializes it using a secret key stored in environment variables (`process.env.STRIPE_SECRET_KEY`).
+- `Tour`: Imports the **Mongoose model** for tours (likely stored in a MongoDB database).
+- `catchAsync`: A utility function that catches errors in async functions to prevent unhandled promise rejections.
+- `factory`: Likely a reusable function for handling CRUD operations (not used in this file).
+- `AppError`: A custom error-handling utility to manage application-specific errors.
 
 ---
 
-## 3. Integrating Email Functionality in Authentication Controller
+## **2. `getCheckoutSession` Controller**
 
-Now, we integrate the email sending function into our authentication logic.
-
-### **authController.js**:
+This function generates a **Stripe checkout session** when a user books a tour.
 
 ```jsx
-const resetURL = `${req.protocol}://${req.get('host')}/api/v1/users/resetPassword/${resetToken}`;
-await new Email(user, resetURL).sendPasswordReset();
+exports.getCheckoutSession = catchAsync(async (req, res, next) => {
 ```
 
-### **Steps:**
+- **`catchAsync`** wraps the function to automatically handle any errors.
+- This is an **Express.js route handler**, which executes when a request is made to get a checkout session.
 
-1. **Generate the reset URL** dynamically based on the request protocol and host.
-2. **Create a new Email instance**, passing the user and reset URL.
-3. **Call `sendPasswordReset()`** to send the email.
+### **Step 1: Fetch the Tour Details**
 
-### **Benefits:**
+```jsx
+const tour = await Tour.findById(req.params.tourId);
+console.log(tour);
+```
 
-- Keeps email logic **separate** from authentication logic.
-- Enhances **code reusability**.
-- Improves **maintainability** by abstracting email details.
-
----
-
-## 4. Testing Password Reset Functionality
-
-To verify that our password reset email works correctly, we use **Postman**.
-
-### **Steps to Test:**
-
-1. **Send a `POST` request** to the Forgot Password endpoint:
-
-   - Route: `/api/v1/users/forgotPassword`
-   - Payload:
-
-   ```
-   {
-     "email": "test3@natours.io"
-   }
-   ```
-
-2. **Check the response**:
-   - The response should return `{ success: true }` and a reset token.
-3. **Verify the email** in Mailtrap (for development mode):
-   - The email should appear in the Mailtrap inbox.
-   - The email should contain a reset link.
-4. **Use the reset token to update the password**:
-
-   - Send a `PATCH` request to `/api/v1/users/resetPassword/:token`
-   - Example payload:
-
-   ```
-   {
-     "password": "newpassword",
-     "passwordConfirm": "newpassword"
-   }
-   ```
-
-5. **Attempt logging in with the new password**:
-   - Use `/api/v1/users/login`
-   - Verify that authentication succeeds.
+- `req.params.tourId` extracts the tour ID from the request URL (e.g., `/checkout-session/65789abcd123`).
+- `Tour.findById()` queries the database to get tour details.
+- The `console.log(tour);` statement logs the tour details for debugging.
 
 ---
 
-## 5. Using Mailtrap for Development Testing
+### **Step 2: Create a Stripe Checkout Session**
 
-To prevent sending real emails during development, we use **Mailtrap**.
+```jsx
+const session = await stripe.checkout.sessions.create({
+```
 
-### **Why Mailtrap?**
+- This function creates a **checkout session** that Stripe uses for handling payments.
 
-- **Prevents accidental emails** from reaching real users.
-- **Allows testing and debugging** email templates in a sandboxed environment.
-- **Captures all outgoing emails**, making them visible in the Mailtrap dashboard.
+### **Defining Session Properties**
 
-### **Next Steps**
+```jsx
+payment_method_types: ['card'],
+mode: 'payment',
+```
 
-In the next phase, we will configure our application to send **real emails** to actual email addresses using a transactional email service like **SendGrid or Mailgun**.
+- `payment_method_types: ['card']` → Only card payments are accepted.
+- `mode: 'payment'` → The session is for making a **one-time payment**.
+
+### **Handling Success & Cancellation**
+
+```jsx
+success_url: `${req.protocol}://${req.get('host')}/`,
+cancel_url: `${req.protocol}://${req.get('host')}/tour/${tour.slug}`,
+```
+
+- `success_url`: Redirects the user to the homepage (`/`) **after a successful payment**.
+- `cancel_url`: Redirects the user to the tour details page (`/tour/{tour.slug}`) **if the payment is canceled**.
+
+### **Tracking the Tour**
+
+```jsx
+client_reference_id: req.params.tourId,
+```
+
+- Saves the `tourId` as a **client reference ID**, allowing the app to know which tour the user booked.
+
+### **Configuring the Payment Item**
+
+```jsx
+line_items: [
+  {
+    price_data: {
+      currency: 'usd',
+      product_data: {
+        name: `${tour.name} Tour`,
+        description: tour.summary,
+        images: [
+          `${req.protocol}://${req.get('host')}/img/tours/${tour.imageCover}`,
+        ],
+      },
+      unit_amount: tour.price * 100, // Convert price to cents
+    },
+    quantity: 1,
+  },
+],
+```
+
+- Defines the **product details** that will appear in the Stripe checkout page.
+- `tour.name` and `tour.summary` are used for the tour's **name and description**.
+- `tour.imageCover` is the **image shown** during checkout.
+- `tour.price * 100` → Converts the price from dollars to cents (Stripe expects the price in the smallest currency unit).
+- `quantity: 1` → The user is booking **one tour**.
+
+---
+
+### **Step 3: Send the Checkout Session to the Client**
+
+```jsx
+res.status(200).json({
+  status: 'success',
+  session,
+});
+```
+
+- Sends the created **checkout session** back as a JSON response.
+- The front end can use this session to redirect users to **Stripe's checkout page**.
+
+---
+
+## **Summary**
+
+- **Gets tour details** from MongoDB.
+- **Creates a Stripe checkout session** with tour info, pricing, and payment options.
+- **Returns the session** so the frontend can redirect the user to Stripe for payment.
