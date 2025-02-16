@@ -1,130 +1,131 @@
-# 014 Integrating Stripe into the Back-End
+# 015 Processing Payments on the Front-End
 
 ---
 
-## **1. Importing Required Modules**
+## Processing Payments with Stripe in Node.js
 
-```jsx
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const Tour = require('../models/tourModel');
-const catchAsync = require('./../utils/catchAsync');
-const factory = require('./handlerFactory');
-const AppError = require('../utils/appError');
-```
+## Overview
 
-- `stripe`: Imports the **Stripe** library and initializes it using a secret key stored in environment variables (`process.env.STRIPE_SECRET_KEY`).
-- `Tour`: Imports the **Mongoose model** for tours (likely stored in a MongoDB database).
-- `catchAsync`: A utility function that catches errors in async functions to prevent unhandled promise rejections.
-- `factory`: Likely a reusable function for handling CRUD operations (not used in this file).
-- `AppError`: A custom error-handling utility to manage application-specific errors.
+In this lecture, we will learn how to integrate Stripe for processing payments. The goal is to implement a "Book Tour Now" button that only appears when a user is logged in. If a user is not logged in, they will be redirected to the login page. We will also set up a Stripe checkout session and process payments on the front end.
 
 ---
 
-## **2. `getCheckoutSession` Controller**
+## 1. Displaying the Booking Button Conditionally
 
-This function generates a **Stripe checkout session** when a user books a tour.
+### **Step 1: Modify the Tour Template**
 
-```jsx
-exports.getCheckoutSession = catchAsync(async (req, res, next) => {
-```
-
-- **`catchAsync`** wraps the function to automatically handle any errors.
-- This is an **Express.js route handler**, which executes when a request is made to get a checkout session.
-
-### **Step 1: Fetch the Tour Details**
-
-```jsx
-const tour = await Tour.findById(req.params.tourId);
-console.log(tour);
-```
-
-- `req.params.tourId` extracts the tour ID from the request URL (e.g., `/checkout-session/65789abcd123`).
-- `Tour.findById()` queries the database to get tour details.
-- The `console.log(tour);` statement logs the tour details for debugging.
+- The "Book Tour Now" button should only be visible if a user is logged in.
+- If no user is logged in, display a button that redirects to the login page.
+- Use a template conditional to achieve this:
+  ```html
+  {% if user %}
+  <button id="book-tour" data-tour-id="{{ tour.id }}">Book Tour Now</button>
+  {% else %}
+  <a href="/login" class="btn">Login to Book Tour</a>
+  {% endif %}
+  ```
+- **Why store the tour ID in the button?**
+  - The Stripe API requires the tour ID.
+  - By adding a `data-tour-id` attribute, we can access it in JavaScript and send it in the request.
 
 ---
 
-### **Step 2: Create a Stripe Checkout Session**
+## 2. Implementing the Payment Request in the Frontend
 
-```jsx
-const session = await stripe.checkout.sessions.create({
-```
+### **Step 2: Create stripe.js**
 
-- This function creates a **checkout session** that Stripe uses for handling payments.
+- We need to create a new script file `stripe.js` in the `public/js` directory.
+- Since the installed Stripe package only works for the backend, we must include Stripe’s client-side script in our HTML.
 
-### **Defining Session Properties**
+### **Include Stripe’s Client-Side Script**
 
-```jsx
-payment_method_types: ['card'],
-mode: 'payment',
-```
+- Add the Stripe script in the `<head>` section of the HTML:
+  ```jsx
+  <script src="https://js.stripe.com/v3/"></script>
+  ```
 
-- `payment_method_types: ['card']` → Only card payments are accepted.
-- `mode: 'payment'` → The session is for making a **one-time payment**.
+### **Initialize Stripe in stripe.js**
 
-### **Handling Success & Cancellation**
+- Retrieve the public API key from Stripe’s dashboard.
+- Initialize Stripe in `stripe.js`:
+  ```jsx
+  const stripe = Stripe('your-public-key-here');
+  ```
+- The public key is visible in the Stripe dashboard under API keys.
 
-```jsx
-success_url: `${req.protocol}://${req.get('host')}/`,
-cancel_url: `${req.protocol}://${req.get('host')}/tour/${tour.slug}`,
-```
+### **Create the `bookTour` Function**
 
-- `success_url`: Redirects the user to the homepage (`/`) **after a successful payment**.
-- `cancel_url`: Redirects the user to the tour details page (`/tour/{tour.slug}`) **if the payment is canceled**.
+- This function will handle booking a tour by communicating with the backend.
+- **Steps:**
 
-### **Tracking the Tour**
+  1. Fetch the checkout session from the server.
+  2. Redirect the user to the Stripe checkout page.
 
-```jsx
-client_reference_id: req.params.tourId,
-```
+  ```jsx
+  import axios from 'axios';
 
-- Saves the `tourId` as a **client reference ID**, allowing the app to know which tour the user booked.
+  const bookTour = async (tourId) => {
+    try {
+      // Step 1: Get checkout session from the server
+      const session = await axios.get(
+        `/api/v1/bookings/checkout-session/${tourId}`,
+      );
 
-### **Configuring the Payment Item**
-
-```jsx
-line_items: [
-  {
-    price_data: {
-      currency: 'usd',
-      product_data: {
-        name: `${tour.name} Tour`,
-        description: tour.summary,
-        images: [
-          `${req.protocol}://${req.get('host')}/img/tours/${tour.imageCover}`,
-        ],
-      },
-      unit_amount: tour.price * 100, // Convert price to cents
-    },
-    quantity: 1,
-  },
-],
-```
-
-- Defines the **product details** that will appear in the Stripe checkout page.
-- `tour.name` and `tour.summary` are used for the tour's **name and description**.
-- `tour.imageCover` is the **image shown** during checkout.
-- `tour.price * 100` → Converts the price from dollars to cents (Stripe expects the price in the smallest currency unit).
-- `quantity: 1` → The user is booking **one tour**.
+      // Step 2: Redirect to Stripe checkout page
+      await stripe.redirectToCheckout({ sessionId: session.data.session.id });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+  ```
 
 ---
 
-### **Step 3: Send the Checkout Session to the Client**
+## 3. Connecting the Button to the `bookTour` Function
 
-```jsx
-res.status(200).json({
-  status: 'success',
-  session,
-});
-```
+### **Step 3: Modify index.js**
 
-- Sends the created **checkout session** back as a JSON response.
-- The front end can use this session to redirect users to **Stripe's checkout page**.
+- Import `bookTour` from `stripe.js`.
+- Select the booking button and attach an event listener.
+
+  ```jsx
+  import { bookTour } from './stripe';
+
+  const bookBtn = document.getElementById('book-tour');
+
+  if (bookBtn) {
+    bookBtn.addEventListener('click', (e) => {
+      e.target.textContent = 'Processing...';
+      const { tourId } = e.target.dataset;
+      bookTour(tourId);
+    });
+  }
+  ```
+
+### **Explanation:**
+
+- **Event Listener:** When the button is clicked, it:
+  1. Changes the button text to "Processing..."
+  2. Extracts the `tourId` from the `data-tour-id` attribute.
+  3. Calls `bookTour(tourId)` to initiate the payment process.
 
 ---
 
-## **Summary**
+## 4. Testing the Implementation
 
-- **Gets tour details** from MongoDB.
-- **Creates a Stripe checkout session** with tour info, pricing, and payment options.
-- **Returns the session** so the frontend can redirect the user to Stripe for payment.
+- Ensure the development server is running (`npm start`).
+- Check that the "Book Tour" button appears only when logged in.
+- Click the button and verify that the user is redirected to Stripe’s checkout page.
+
+---
+
+## 5. Summary
+
+- We conditionally displayed the "Book Tour" button based on user authentication.
+- We stored the `tourId` in the button’s `data-attribute`.
+- We created `stripe.js` to handle payment requests.
+- We used Axios to fetch the checkout session from the server.
+- We redirected users to Stripe’s checkout page.
+- We connected the button to the `bookTour` function in `index.js`.
+
+This completes the front-end setup for processing payments with Stripe in a Node.js application.

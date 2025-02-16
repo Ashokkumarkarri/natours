@@ -16,6 +16,7 @@ exports.getCheckoutSession = catchAsync(async (req, res, next) => {
     success_url: `${req.protocol}://${req.get('host')}/`, //called when the payment is successful
     cancel_url: `${req.protocol}://${req.get('host')}/tour/${tour.slug}`, //called when the payment is cancelled
     client_reference_id: req.params.tourId, //this is the id of the tour that the user is booking
+    customer_email: req.user.email, // Add customer email from req.user
     line_items: [
       {
         price_data: {
