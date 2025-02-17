@@ -21,6 +21,8 @@ const viewRouter = require('./routes/viewRoutes');
 
 const app = express();
 
+app.enable('trust proxy');
+
 app.set('view engine', 'pug'); //pug templates are called views in express
 app.set('views', path.join(__dirname, 'views'));
 //views,path to views: we are setting the path to the views folder
