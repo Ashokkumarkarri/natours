@@ -37,12 +37,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(helmet.crossOriginResourcePolicy({ policy: 'cross-origin' }));
 
 // Enable CORS
-app.use(
-  cors({
-    origin: 'http://localhost:8000', // Replace with your frontend origin
-    credentials: true, // Allow cookies and other credentials
-  }),
-);
+app.use(cors());
+
+app.options('*', cors());
+// app.options('/api/v1/tours/:id',cors())
 
 //DEvelopment logging
 if (process.env.NODE_ENV === 'development') {
