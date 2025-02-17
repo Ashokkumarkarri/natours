@@ -77,7 +77,7 @@ reviewSchema.statics.calcAverageRatings = async function (tourId) {
       },
     },
   ]);
-  console.log(stats);
+  // console.log(stats);
   //update the tour document
   if (stats.length > 0) {
     await Tour.findByIdAndUpdate(tourId, {

@@ -8,6 +8,7 @@ const hpp = require('hpp');
 const path = require('path'); //core module, built in module, we use path module to manipulate the path names.
 const cookieParser = require('cookie-parser');
 const cors = require('cors'); // Added CORS package
+const compression = require('compression');
 
 // const { execArgv } = require('process');
 const AppError = require('./utils/appError');
@@ -79,6 +80,8 @@ app.use(
     ],
   }),
 );
+
+app.use(compression());
 
 //Testing middleware
 app.use((req, res, next) => {

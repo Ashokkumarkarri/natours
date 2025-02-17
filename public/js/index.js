@@ -21,7 +21,7 @@ if (mapBox) {
 
 if (loginForm) {
   loginForm.addEventListener('submit', (e) => {
-    console.log(email, password);
+    // console.log(email, password);
     e.preventDefault(); //this prevent's the form,from loading any other page
 
     //Values
@@ -70,6 +70,6 @@ if (bookBtn) {
     const tourIdVal = e.target.dataset.tourId; //in the button in the PUG we had written : data-tour-id /// when we get it in JS the js will convert - into a cammelcase. so we can accest the ID by saying tourId
     bookTour(tourIdVal);
 
-    console.log(tourIdVal);
+    // console.log(tourIdVal);
   });
 }

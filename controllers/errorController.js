@@ -36,7 +36,7 @@ const sendErrorDev = (err, req, res) => {
     });
   }
   // ------------B) RENDERED WEBSITE-------------------
-  console.error(`Error `, err);
+  console.error(`Error 🔥`, err);
   // Render the 'error' page with a descriptive message for developers.
   return res.status(err.statusCode).render('error', {
     title: 'Something went wrong',

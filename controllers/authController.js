@@ -53,7 +53,7 @@ exports.signup = catchAsync(async (req, res, next) => {
   });
   // const url = 'http://localhost:8000/me';
   const url = `${req.protocol}://${req.get('host')}/me`;
-  console.log(url);
+  // console.log(url);
   await new Email(newUser, url).sendWelcome();
   createSendToken(newUser, 201, res);
 });
@@ -113,7 +113,7 @@ exports.protect = catchAsync(async (req, res, next) => {
 
   //2)Verification token : if the token is tampered or not
   const decoded = await promisify(jwt.verify)(token, process.env.JWT_SECRET);
-  console.log(decoded);
+  // console.log(decoded);
   //3)check if user still exists
   const currentUser = await User.findById(decoded.id);
   if (!currentUser) {
